@@ -3,23 +3,81 @@
 	"version": "0.2.0",
 	"configurations": [
 		{ 
-			"name": "(gdb) Attach",
+			"name": "01lesson",
 			"type": "cppdbg",
 			"request": "launch",
-		 // slonegd note
-		 // "miDebuggerPath": "/home/slonegd/opt/gcc-arm-none-eabi-6-2017-q1-update/bin/arm-none-eabi-gdb",
-         // phobos
-            "miDebuggerPath": "/home/dvk/code/gcc-arm-none-eabi-6-2017-q1-update/bin/arm-none-eabi-gdb",
-		 // work note
-         	// "miDebuggerPath": "/home/ap/Code/gcc-arm-none-eabi-6-2017-q2-update/bin/arm-none-eabi-gdb",
-		 // home
-		 //	"miDebuggerPath": "/home/slonegd/Code/gcc-arm-none-eabi-6-2017-q2-update/bin/arm-none-eabi-gdb",
-         //"program": "${workspaceRoot}/build/EO86_C24.elf",
-        "program": "${workspaceRoot}/build/EO85_AP14E5_measure.elf",
+         "miDebuggerPath": "arm-none-eabi-gdb",
+         "program": "${workspaceRoot}/01lesson/build/01lesson.elf",
 			"miDebuggerServerAddress": "localhost:4242",
-		   
 			"MIMode": "gdb",
 			"cwd": "${workspaceRoot}"
+		},
+		{ 
+			"name": "02lesson",
+			"type": "cppdbg",
+			"request": "launch",
+         "miDebuggerPath": "arm-none-eabi-gdb",
+         "program": "${workspaceRoot}/02lesson/build/02lesson.elf",
+			"miDebuggerServerAddress": "localhost:4242",
+			"MIMode": "gdb",
+			"cwd": "${workspaceRoot}"
+		},
+		{
+			"name": "03lesson",
+			"type": "cppdbg",
+			"request": "launch",
+			"program": "${workspaceFolder}/03lesson/a.out",
+			"args": [],
+			"stopAtEntry": false,
+			"cwd": "${workspaceFolder}",
+			"environment": [],
+			"externalConsole": true,
+			"MIMode": "gdb",
+			"setupCommands": [
+				 {
+					  "description": "Enable pretty-printing for gdb",
+					  "text": "-enable-pretty-printing",
+					  "ignoreFailures": true
+				 }
+			]
+		},
+		{
+			"name": "04lesson",
+			"type": "cppdbg",
+			"request": "launch",
+			"program": "${workspaceFolder}/04lesson/a.out",
+			"args": [],
+			"stopAtEntry": false,
+			"cwd": "${workspaceFolder}",
+			"environment": [],
+			"externalConsole": true,
+			"MIMode": "gdb",
+			"setupCommands": [
+				 {
+					  "description": "Enable pretty-printing for gdb",
+					  "text": "-enable-pretty-printing",
+					  "ignoreFailures": true
+				 }
+			]
+		},
+		{
+			"name": "05lesson",
+			"type": "cppdbg",
+			"request": "launch",
+			"program": "${workspaceFolder}/05lesson/a.out",
+			"args": [],
+			"stopAtEntry": false,
+			"cwd": "${workspaceFolder}",
+			"environment": [],
+			"externalConsole": true,
+			"MIMode": "gdb",
+			"setupCommands": [
+				 {
+					  "description": "Enable pretty-printing for gdb",
+					  "text": "-enable-pretty-printing",
+					  "ignoreFailures": true
+				 }
+			]
 		}
 	]
 
