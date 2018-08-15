@@ -1,4 +1,4 @@
-
+#include <iostream>
 constexpr auto sum (auto a, auto b)
 {
    return a + b;
@@ -7,59 +7,99 @@ static_assert ( sum(1,2) == 3 );
 static_assert ( sum(1,2.1) == 3.1 );
 
 
-
 // Дано трехзначное число. Найдите произведение их цифр.
-// constexpr auto mul (int a)
-// {
-   
-// }
+constexpr auto mul (int a)
+{
+    // std::cout << "Enter a three-digit number" << std::endl;
+    // std::cin >> a;
 
-// static_assert ( mul(123)  == 6 );
-// static_assert ( mul(321)  == 6 );
-// static_assert ( mul(1321) == 6 );
-// static_assert ( mul(21)   == 2 );
+    auto a1 = a/100;
+    if (a1 == 0)
+        a1 = 1;
+    else if (a1 > 10) {
+        while (a1 > 10){ 
+            a=a/10;
+            a1 = a/100;
+        }
+    }
+    auto a2 = (a/10)%10;
+    auto a3 = a%10;
+
+    return a1*a2*a3;
+
+    // std::cout << "Multiplying the digits of a numder is " << mul << std:: endl;
+
+}
+
+static_assert ( mul(123)  == 6 );
+static_assert ( mul(321)  == 6 );
+static_assert ( mul(1322) == 6 );
+static_assert ( mul(21)   == 2 );
+static_assert ( mul(123456) == 6 );
 
 // Дано пятизначное число. Найдите разность двух чисел.
 // Первое число равно сумме цифр исходного числа, стоящих на четных местах.
 // Второе число равно сумме цифр, стоящих на нечетных местах.
-// constexpr auto delta (int a)
-// {
-   
-// }
+constexpr auto delta (int a)
+{
+   auto sumOdd = 0;
+   auto sumEven = 0;
 
-// static_assert ( delta(12345)  == -3 );
-// static_assert ( delta(14253)  == 3  );
+   while (a>0) {
+       auto odd = a%10;
+       sumOdd +=odd;
+       a /= 10;
+       auto even = a%10; 
+       sumEven += even;
+       a /= 10;
+    }
+
+    return sumEven - sumOdd;
+
+}
+
+static_assert ( delta(12345)  == -3 );
+static_assert ( delta(14253)  == 3  );
+static_assert ( delta(145253)  == 2 );
 
 
 // Дано трехзначное число. Выведите на экран новое число,
 // полученное из исходного путем перестановки цифр в обратном порядке.
-// constexpr auto rev (int a)
-// {
-   
-// }
+constexpr auto rev (int a)
+{
+   auto b = 0;
+   while (a>0) {
+       b = 10*b +a%10;
+       a = a/10;
+   }
+    return b;
+}
 
-// static_assert ( rev(123) == 321 );
-// static_assert ( rev(321) == 123  );
+static_assert ( rev(123) == 321 );
+static_assert ( rev(321) == 123  );
+static_assert ( rev(4321) == 1234  );
 
 
 // Дано трехзначное число. Замените среднюю цифру на ноль.
-// constexpr auto nul (int a)
-// {
+constexpr auto nul (int a)
+{
    
-// }
+   return a/100*100 + a%10;
+    
+}
 
-// static_assert ( nul(123) == 103 );
-// static_assert ( nul(321) == 301  );
+static_assert ( nul(123) == 103 );
+static_assert ( nul(321) == 301  );
 
 
 // Дано шестизначное число. Поменяйте местами первую и последнюю цифры.
-// constexpr auto rev2 (int a)
-// {
-   
-// }
+constexpr auto rev2 (int a)
+{
+    
+}
 
-// static_assert ( rev2(123456) == 623451 );
-// static_assert ( rev2(654321) == 154326 );
+static_assert ( rev2(123456) == 623451 );
+static_assert ( rev2(654321) == 154326 );
 
 // Дано пятизначное число. Цифры на четных позициях занулить.
 // Например, из 12345 получается число 10305.
