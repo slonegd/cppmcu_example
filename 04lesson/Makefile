@@ -1,5 +1,5 @@
 all:
-	g++ 04lesson.cpp -std=c++17 -Wall
+	g++ 04lesson.cpp -std=c++17 -Wall -g
 
 run:
 	./a.out
