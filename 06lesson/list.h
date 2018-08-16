@@ -11,12 +11,13 @@ struct Listable
 
 
 template<class T>
-struct List
+class List
 {
 
    T* first {nullptr};
    T* last  {nullptr};
 
+public:
    void push_back (T* pobj)
    {
       pobj->prev = last;
@@ -40,20 +41,4 @@ struct List
          last = pobj->prev->next;
       }
    }
-
-   // эта часть для прохода в автоцикле, сделал на будущее
-   // struct iterator
-   // {
-   //    T* p;
-   //    iterator()          : p {nullptr} {}
-   //    iterator (T* other) : p {other}   {}
-
-   //    T&        operator*  () const { return *p; }
-   //    bool      operator!= (const iterator &other) const { return p != other.p; }
-   //    iterator& operator++ () { p = p->next; return *this; }
-   // };
-
-   // iterator begin() noexcept { return iterator {first}; }
-   // iterator end()   noexcept { return nullptr; }
-
 };

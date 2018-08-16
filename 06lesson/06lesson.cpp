@@ -35,10 +35,12 @@ struct TickSubscriber : Listable<TickSubscriber> {
 // наследуется от List<TickSubscriber>, чтобы запомнить
 // указатели на первый и последний объекты
 // а так же, чтоб была реализация методов push_back и remove
-struct TickUpdater : List<TickSubscriber>
+// наследование приватное, чтобы всё, что унаследованое тоже было приватное
+struct TickUpdater : private List<TickSubscriber>
 {
    void subscribe(TickSubscriber* p) { push_back(p); }
    void unsubscribe(TickSubscriber* p) { remove(p); }
+
    // в издателе 04lesson тут был автоцикл, чтобы его реализовать
    // надо знать об итераторах, оставим на потом, а функцию перепишем
    void tick() // { for (auto& subscriber : *this) subscriber.tick(); }
@@ -62,15 +64,17 @@ extern "C" void SysTick_Handler()
 
 
 // изменяем CyclicTask, наследуясь от TickSubscriber
+// наследование приватное (для класса это по умолчанию)
 template<std::size_t time>
 class CyclicTask : TickSubscriber
 {
+private:
    std::size_t time_count {0};
+   // метод теперь override и скрыт от пользовательского кода
+   void tick() override { time_count++; }
 public:
    // необходимо добавить конструктор с подпиской на издателя
    CyclicTask() { tickUpdater.subscribe(this); }
-   // метод теперь override
-   void tick() override { time_count++; }
    void operator ()(void(function)())
    { 
       if (time_count == time)

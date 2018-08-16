@@ -89,6 +89,16 @@
 			"MIMode": "gdb",
 			"cwd": "${workspaceRoot}"
 		},
+		{ 
+			"name": "07lesson",
+			"type": "cppdbg",
+			"request": "launch",
+         "miDebuggerPath": "arm-none-eabi-gdb",
+         "program": "${workspaceRoot}/02lesson/build/07lesson.elf",
+			"miDebuggerServerAddress": "localhost:4242",
+			"MIMode": "gdb",
+			"cwd": "${workspaceRoot}"
+		},
 		{
 			"name": "not lesson",
 			"type": "cppdbg",

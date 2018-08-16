@@ -39,7 +39,8 @@
       "typeinfo": "cpp",
       "utility": "cpp",
       "*.h": "cpp",
-      "algorithm": "cpp"
+      "algorithm": "cpp",
+      "iterator": "cpp"
    },
 "editor.tabSize": 3,
 "editor.renderWhitespace": "boundary"
