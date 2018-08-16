@@ -1,3 +1,6 @@
+#include <algorithm>
+#include <functional>
+#include <iostream>
 
 constexpr auto sum (auto a, auto b)
 {
@@ -102,13 +105,7 @@ static_assert ( sum(1,2.1) == 3.1 );
 
 // Дано четырехзначное число. Переставить цифры так,
 // чтобы получилось наибольшее из возможных число.
-// constexpr auto max2 (int a)
-// {
 
-// }
-
-// static_assert ( max2(1234) == 4321 );
-// static_assert ( max2(2648) == 8642 );
 
 
 
@@ -117,5 +114,5 @@ static_assert ( sum(1,2.1) == 3.1 );
 
 int main()
 {
-
+   // std::cout << max2(1234) << std::endl;
 }
