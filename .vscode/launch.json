@@ -3,30 +3,30 @@
 	"version": "0.2.0",
 	"configurations": [
 		{ 
-			"name": "01lesson",
+			"name": "01",
 			"type": "cppdbg",
 			"request": "launch",
          "miDebuggerPath": "arm-none-eabi-gdb",
-         "program": "${workspaceRoot}/01lesson/build/01lesson.elf",
+         "program": "${workspaceRoot}/01/build/main.elf",
 			"miDebuggerServerAddress": "localhost:4242",
 			"MIMode": "gdb",
 			"cwd": "${workspaceRoot}"
 		},
 		{ 
-			"name": "02lesson",
+			"name": "02",
 			"type": "cppdbg",
 			"request": "launch",
          "miDebuggerPath": "arm-none-eabi-gdb",
-         "program": "${workspaceRoot}/02lesson/build/02lesson.elf",
+         "program": "${workspaceRoot}/02/build/main.elf",
 			"miDebuggerServerAddress": "localhost:4242",
 			"MIMode": "gdb",
 			"cwd": "${workspaceRoot}"
 		},
 		{
-			"name": "03lesson",
+			"name": "03",
 			"type": "cppdbg",
 			"request": "launch",
-			"program": "${workspaceFolder}/03lesson/a.out",
+			"program": "${workspaceFolder}/03/a.out",
 			"args": [],
 			"stopAtEntry": false,
 			"cwd": "${workspaceFolder}",
@@ -42,10 +42,10 @@
 			]
 		},
 		{
-			"name": "04lesson",
+			"name": "04",
 			"type": "cppdbg",
 			"request": "launch",
-			"program": "${workspaceFolder}/04lesson/a.out",
+			"program": "${workspaceFolder}/04/a.out",
 			"args": [],
 			"stopAtEntry": false,
 			"cwd": "${workspaceFolder}",
@@ -61,10 +61,10 @@
 			]
 		},
 		{
-			"name": "05lesson",
+			"name": "05",
 			"type": "cppdbg",
 			"request": "launch",
-			"program": "${workspaceFolder}/05lesson/a.out",
+			"program": "${workspaceFolder}/05/a.out",
 			"args": [],
 			"stopAtEntry": false,
 			"cwd": "${workspaceFolder}",
@@ -80,27 +80,56 @@
 			]
 		},
 		{ 
-			"name": "06lesson",
+			"name": "06",
 			"type": "cppdbg",
 			"request": "launch",
          "miDebuggerPath": "arm-none-eabi-gdb",
-         "program": "${workspaceRoot}/02lesson/build/06lesson.elf",
+         "program": "${workspaceRoot}/06/build/main.elf",
 			"miDebuggerServerAddress": "localhost:4242",
 			"MIMode": "gdb",
 			"cwd": "${workspaceRoot}"
 		},
 		{ 
-			"name": "07lesson",
+			"name": "07",
 			"type": "cppdbg",
 			"request": "launch",
          "miDebuggerPath": "arm-none-eabi-gdb",
-         "program": "${workspaceRoot}/02lesson/build/07lesson.elf",
+         "program": "${workspaceRoot}/07/build/main.elf",
+			"miDebuggerServerAddress": "localhost:4242",
+			"MIMode": "gdb",
+			"cwd": "${workspaceRoot}"
+		},
+		{ 
+			"name": "08",
+			"type": "cppdbg",
+			"request": "launch",
+         "miDebuggerPath": "arm-none-eabi-gdb",
+         "program": "${workspaceRoot}/08/build/main.elf",
 			"miDebuggerServerAddress": "localhost:4242",
 			"MIMode": "gdb",
 			"cwd": "${workspaceRoot}"
 		},
 		{
-			"name": "not lesson",
+			"name": "08_test",
+			"type": "cppdbg",
+			"request": "launch",
+			"program": "${workspaceFolder}/05/a.out",
+			"args": [],
+			"stopAtEntry": false,
+			"cwd": "${workspaceFolder}",
+			"environment": [],
+			"externalConsole": true,
+			"MIMode": "gdb",
+			"setupCommands": [
+				 {
+					  "description": "Enable pretty-printing for gdb",
+					  "text": "-enable-pretty-printing",
+					  "ignoreFailures": true
+				 }
+			]
+		},
+		{
+			"name": "root",
 			"type": "cppdbg",
 			"request": "launch",
 			"program": "${workspaceFolder}/a.out",
