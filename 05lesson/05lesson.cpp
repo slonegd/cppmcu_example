@@ -58,20 +58,20 @@ struct List_ {
 template<class T>
 struct Listable
 {
-   Listable* prev {nullptr};
-   Listable* next {nullptr};
+   T* prev {nullptr};
+   T* next {nullptr};
 };
 
 // класс самого листа
 template<class T>
 struct List
 {
-   // хранит значения на первый и последний, при создании инициализируется нулями, так как элемнтов ещё нет
-   Listable<T>* first {nullptr};
-   Listable<T>* last  {nullptr};
+   // хранит значения на первый и последний, при создании инициализируется нулями, так как элементов ещё нет
+   T* first {nullptr};
+   T* last  {nullptr};
 
    // должен содержать метод добавления в конец списка
-   void push_back (Listable<T>* pobj)
+   void push_back (T* pobj)
    {
       pobj->prev = last;
       if (last)
@@ -81,16 +81,16 @@ struct List
          first = pobj;
    }
    // добавление в начало списка
-   void push_front (Listable<T>* pobj) {} // реализацию не указываю
+   void push_front (T* pobj) {}           // реализацию не указываю
    // удаление из списка
-   void remove (Listable<T>* pobj)
+   void remove (T* pobj)
    {
       if (pobj->prev and pobj->next) {    // если в серединке
          pobj->prev->next = pobj->next;
          pobj->next->prev = pobj->prev;
-      } else if (pobj->next) {		      // если первый
+      } else if (pobj->next) {            // если первый
          first = pobj->next->prev;
-      } else if (pobj->prev) {		   	// если последний
+      } else if (pobj->prev) {            // если последний
          last = pobj->prev->next;
       }
    }
@@ -98,7 +98,7 @@ struct List
 
 
 // создадим тривиальную структуру
-// отнаследуем её базового Listable, чтобы хранить указатели на предыдущий и следующий 
+// наследуем её от базового Listable, чтобы хранить указатели на предыдущий и следующий 
 struct A : Listable<A>
 {
    // любые, необходимые нам поля и методы, самому листу о них ничего знать не надо
