@@ -1,5 +1,5 @@
 /**
- * 10 рефакторинг CyclicTask, ListIterator, тест на лямбдах
+ * 13 делаем из одной кнопки список кнопок
  **/
 
 #include "defines.h"
@@ -8,10 +8,7 @@
 #include "timers.h"
 
 // тут ничего не меняется
-// см. timers.h: изменения CyclicTask так, чтобы оператор() мог принимать лямбду с захватом
-// см. test_cyclic_task.cpp: тот же тест, но на лямбдах
-// см. list.h: перенос класса ListIterator внутрь класса List
-//
+// см. button.h
 
 // 1036 байт -0s
 int main(void)

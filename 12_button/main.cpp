@@ -1,5 +1,5 @@
 /**
- * 09 рефакторинг CyclicTask, ListIterator, тест на лямбдах
+ * 12 пишем кнопку по тестам
  **/
 
 #include "defines.h"

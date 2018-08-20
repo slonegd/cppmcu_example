@@ -1,5 +1,5 @@
 /**
- * 09 рефакторинг CyclicTask, ListIterator, тест на лямбдах
+ * 11 принцип TDD, пишем тесты под кнопку
  **/
 
 #include "defines.h"

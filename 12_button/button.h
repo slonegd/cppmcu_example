@@ -12,7 +12,7 @@ class Button : Subscriber
    // для выявления того, что кнопку уже опросили
    bool done {false};
    // метод, необходимый для Subscriber
-   void notify()
+   void notify() override
    {
       if (Pin::isSet()) {
          time++;
@@ -30,11 +30,10 @@ public:
 
    operator bool()
    {
-      if (time >= 10 and not done) {
-         done = true; // чтобы вернуть true только 1 раз
-         return true;
-      }
-      return false;
+      auto tmp { time >= 10 and not done };
+      if (tmp)
+         done = true; // чтобы вернуть true только 1 раз за нажатие
+      return tmp;
    }
 };
 

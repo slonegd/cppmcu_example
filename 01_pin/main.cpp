@@ -317,8 +317,10 @@ void process()
 /// Можно развить идею в сторону создания объектов.
 namespace iter8 {
 
+// нельзя передать в качестве параметра шаблона указатель, но можно адрес
 template <uint32_t adr, int n>
 struct Pin {
+   // преобразуем адрес в указатель
    static auto port() { return reinterpret_cast<decltype(GPIOA)>(adr); }
    static void clockEnable()
    {
