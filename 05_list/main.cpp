@@ -93,6 +93,9 @@ struct List
       } else if (pobj->prev) {            // если последний
          last = pobj->prev->next;
       }
+      // обнуление всех указателей, мы не в списке
+      pobj->prev = nullptr;
+      pobj->next = nullptr;
    }
 };
 
@@ -142,14 +145,13 @@ int main ()
    // в первом элементе указатель на предыдущий нулевой, на следующий - адрес второго
    // во втором элементе указатель на предыдущий - адрес первого, на следующий нулевой
    A a3 {list};
-   a2.n = 3;
+   a3.n = 3;
    std::cout << "A a3 {list};" << std::endl;
    std::cout << list.first << ' ' << list.last << std::endl;
    std::cout << a1.adr() << ": "  << a1.n << ' ' << a1.prev << ' ' << a1.next << std::endl;
    std::cout << a2.adr() << ": "  << a2.n << ' ' << a2.prev << ' ' << a2.next << std::endl;
    std::cout << a3.adr() << ": "  << a3.n << ' ' << a3.prev << ' ' << a3.next << std::endl;
    // пример вывода тут
-   // A a3 {list};
    // A a3 {list};
    // 0x7ffce04510a0 0x7ffce0451060
    // 0x7ffce04510a0: 1 0 0x7ffce0451080
@@ -171,4 +173,17 @@ int main ()
    // указатель на первый и последний не изменились, потому что удалялся из списка средний элемент
    // первый теперь указывает на третий
    // а третий на первый
+   list.push_back (&a2);
+   std::cout << "list.push_back (&a2);" << std::endl;
+   std::cout << list.first << ' ' << list.last << std::endl;
+   std::cout << a1.adr() << ": "  << a1.n << ' ' << a1.prev << ' ' << a1.next << std::endl;
+   std::cout << a3.adr() << ": "  << a3.n << ' ' << a3.prev << ' ' << a3.next << std::endl;
+   std::cout << a2.adr() << ": "  << a2.n << ' ' << a2.prev << ' ' << a2.next << std::endl;
+   // пример вывода тут
+   // list.push_back (&a2);
+   // 0x7ffce04510a0 0x7ffce0451080
+   // 0x7ffce04510a0: 1 0 0x7ffce0451060
+   // 0x7ffce0451060: 3 0x7ffce04510a0 0x7ffce0451080
+   // 0x7ffce0451080: 2 0x7ffce0451060 0
+   // второй переместился в конец списка
 }

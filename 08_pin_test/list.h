@@ -81,6 +81,8 @@ void List<T>::remove (T* p)
    } else if (p->prev) {
       last = p->prev->next;
    }
+   pobj->prev = nullptr;
+   pobj->next = nullptr;
 }
 
 

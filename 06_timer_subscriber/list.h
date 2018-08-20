@@ -40,5 +40,7 @@ public:
       } else if (pobj->prev) {
          last = pobj->prev->next;
       }
+      pobj->prev = nullptr;
+      pobj->next = nullptr;
    }
 };

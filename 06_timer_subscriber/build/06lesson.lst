@@ -1,0 +1,1671 @@
+ARM GAS  /tmp/ccRfp5Zy.s 			page 1
+
+
+   1              		.cpu cortex-m0
+   2              		.eabi_attribute 20, 1
+   3              		.eabi_attribute 21, 1
+   4              		.eabi_attribute 23, 3
+   5              		.eabi_attribute 24, 1
+   6              		.eabi_attribute 25, 1
+   7              		.eabi_attribute 26, 1
+   8              		.eabi_attribute 30, 4
+   9              		.eabi_attribute 34, 0
+  10              		.eabi_attribute 18, 4
+  11              		.file	"06.cpp"
+  12              		.text
+  13              	.Ltext0:
+  14              		.cfi_sections	.debug_frame
+  15              		.section	.text._ZN12_GLOBAL__N_110CyclicTaskILj300EE4tickEv,"ax",%progbits
+  16              		.align	1
+  17              		.syntax unified
+  18              		.code	16
+  19              		.thumb_func
+  20              		.fpu softvfp
+  22              	_ZN12_GLOBAL__N_110CyclicTaskILj300EE4tickEv:
+  23              	.LFB2402:
+  24              		.file 1 "06.cpp"
+   1:06.cpp  **** /**
+   2:06.cpp  ****  * 06 программный таймер, как подписчик
+   3:06.cpp  ****  **/
+   4:06.cpp  **** 
+   5:06.cpp  **** #include "defines.h"
+   6:06.cpp  **** #include "pin.h"
+   7:06.cpp  **** #include "stm32f0xx.h"
+   8:06.cpp  **** #include "list.h"
+   9:06.cpp  **** #include <cstddef>
+  10:06.cpp  **** 
+  11:06.cpp  **** // переписываем пример 02 используя паттерн подписч�
+  12:06.cpp  **** // всё, что касается двунаправленного списка перенёс в 
+  13:06.cpp  **** // классами из 04 воспользоваться не получится, так к
+  14:06.cpp  **** 
+  15:06.cpp  **** namespace {
+  16:06.cpp  **** // эта функция по прежнему нужна
+  17:06.cpp  **** void systemTimerInit()
+  18:06.cpp  **** {
+  19:06.cpp  ****    constexpr uint32_t val = F_CPU/(1000)-1;
+  20:06.cpp  ****    SysTick->LOAD = val;                        // Загрузка значения
+  21:06.cpp  ****    SysTick->VAL  = val;                        // Обнуляем таймеры и флаги 
+  22:06.cpp  ****    SysTick->CTRL = SysTick_CTRL_CLKSOURCE_Msk  // processor clock
+  23:06.cpp  ****                  | SysTick_CTRL_TICKINT_Msk;   // разрешение прерывания
+  24:06.cpp  ****    SysTick->CTRL |= SysTick_CTRL_ENABLE_Msk;   // запускает таймер
+  25:06.cpp  **** }
+  26:06.cpp  **** 
+  27:06.cpp  **** // базовый класс подписчика
+  28:06.cpp  **** // отличается от подписчика из 04 тем, что сам будет х
+  29:06.cpp  **** // на предыдущий и следующий объект, раелизующий этот б
+  30:06.cpp  **** struct TickSubscriber : Listable<TickSubscriber> {
+  31:06.cpp  ****    virtual void tick() = 0;
+  32:06.cpp  **** };
+  33:06.cpp  **** 
+  34:06.cpp  **** // Издатель
+ARM GAS  /tmp/ccRfp5Zy.s 			page 2
+
+
+  35:06.cpp  **** // наследуется от List<TickSubscriber>, чтобы запомнить
+  36:06.cpp  **** // указатели на первый и последний объекты
+  37:06.cpp  **** // а так же, чтоб была реализация методов push_back и remove
+  38:06.cpp  **** // наследование приватное, чтобы всё, что унаследовано�
+  39:06.cpp  **** struct TickUpdater : private List<TickSubscriber>
+  40:06.cpp  **** {
+  41:06.cpp  ****    void subscribe(TickSubscriber* p) { push_back(p); }
+  42:06.cpp  ****    void unsubscribe(TickSubscriber* p) { remove(p); }
+  43:06.cpp  **** 
+  44:06.cpp  ****    // в издателе 04 тут был автоцикл, чтобы его реализо
+  45:06.cpp  ****    // надо знать об итераторах, оставим на потом, а функц�
+  46:06.cpp  ****    void tick() // { for (auto& subscriber : *this) subscriber.tick(); }
+  47:06.cpp  ****    {
+  48:06.cpp  ****       auto p = this->first;
+  49:06.cpp  ****       while (p) {
+  50:06.cpp  ****          p->tick();
+  51:06.cpp  ****          p = p->next;
+  52:06.cpp  ****       }
+  53:06.cpp  ****    }
+  54:06.cpp  **** 
+  55:06.cpp  ****    // в конструкторе вызываем инициализацию прерываний 
+  56:06.cpp  ****    TickUpdater() { systemTimerInit(); }
+  57:06.cpp  **** 
+  58:06.cpp  **** } tickUpdater; // ну и создаём глобальный объект, поскольку ег
+  59:06.cpp  **** 
+  60:06.cpp  **** extern "C" void SysTick_Handler()
+  61:06.cpp  **** {
+  62:06.cpp  ****    tickUpdater.tick();
+  63:06.cpp  **** }
+  64:06.cpp  **** 
+  65:06.cpp  **** 
+  66:06.cpp  **** // изменяем CyclicTask, наследуясь от TickSubscriber
+  67:06.cpp  **** // наследование приватное (для класса это по умолчанию)
+  68:06.cpp  **** template<std::size_t time>
+  69:06.cpp  **** class CyclicTask : TickSubscriber
+  70:06.cpp  **** {
+  71:06.cpp  **** private:
+  72:06.cpp  ****    std::size_t time_count {0};
+  73:06.cpp  ****    // метод теперь override и скрыт от пользовательского код
+  74:06.cpp  ****    void tick() override { time_count++; }
+  25              		.loc 1 74 0
+  26              		.cfi_startproc
+  27              		@ args = 0, pretend = 0, frame = 0
+  28              		@ frame_needed = 0, uses_anonymous_args = 0
+  29              		@ link register save eliminated.
+  30              	.LVL0:
+  31              		.loc 1 74 0
+  32 0000 C368     		ldr	r3, [r0, #12]
+  33              		@ sp needed
+  34 0002 0133     		adds	r3, r3, #1
+  35 0004 C360     		str	r3, [r0, #12]
+  36 0006 7047     		bx	lr
+  37              		.cfi_endproc
+  38              	.LFE2402:
+  40              		.section	.text._ZN12_GLOBAL__N_110CyclicTaskILj200EE4tickEv,"ax",%progbits
+  41              		.align	1
+  42              		.syntax unified
+ARM GAS  /tmp/ccRfp5Zy.s 			page 3
+
+
+  43              		.code	16
+  44              		.thumb_func
+  45              		.fpu softvfp
+  47              	_ZN12_GLOBAL__N_110CyclicTaskILj200EE4tickEv:
+  48              	.LFB2403:
+  49              		.loc 1 74 0
+  50              		.cfi_startproc
+  51              		@ args = 0, pretend = 0, frame = 0
+  52              		@ frame_needed = 0, uses_anonymous_args = 0
+  53              		@ link register save eliminated.
+  54              	.LVL1:
+  55              		.loc 1 74 0
+  56 0000 C368     		ldr	r3, [r0, #12]
+  57              		@ sp needed
+  58 0002 0133     		adds	r3, r3, #1
+  59 0004 C360     		str	r3, [r0, #12]
+  60 0006 7047     		bx	lr
+  61              		.cfi_endproc
+  62              	.LFE2403:
+  64              		.section	.text._ZN12_GLOBAL__N_110CyclicTaskILj100EE4tickEv,"ax",%progbits
+  65              		.align	1
+  66              		.syntax unified
+  67              		.code	16
+  68              		.thumb_func
+  69              		.fpu softvfp
+  71              	_ZN12_GLOBAL__N_110CyclicTaskILj100EE4tickEv:
+  72              	.LFB2404:
+  73              		.loc 1 74 0
+  74              		.cfi_startproc
+  75              		@ args = 0, pretend = 0, frame = 0
+  76              		@ frame_needed = 0, uses_anonymous_args = 0
+  77              		@ link register save eliminated.
+  78              	.LVL2:
+  79              		.loc 1 74 0
+  80 0000 C368     		ldr	r3, [r0, #12]
+  81              		@ sp needed
+  82 0002 0133     		adds	r3, r3, #1
+  83 0004 C360     		str	r3, [r0, #12]
+  84 0006 7047     		bx	lr
+  85              		.cfi_endproc
+  86              	.LFE2404:
+  88              		.section	.text._ZN4ListIN12_GLOBAL__N_114TickSubscriberEE9push_backEPS1_.constprop.8,"ax",%progbit
+  89              		.align	1
+  90              		.syntax unified
+  91              		.code	16
+  92              		.thumb_func
+  93              		.fpu softvfp
+  95              	_ZN4ListIN12_GLOBAL__N_114TickSubscriberEE9push_backEPS1_.constprop.8:
+  96              	.LFB2415:
+  97              		.file 2 "list.h"
+   1:list.h        **** #pragma once
+   2:list.h        **** 
+   3:list.h        **** #include <iterator>
+   4:list.h        **** 
+   5:list.h        **** template<class T>
+   6:list.h        **** struct Listable
+   7:list.h        **** {
+ARM GAS  /tmp/ccRfp5Zy.s 			page 4
+
+
+   8:list.h        ****    T* prev {nullptr};
+   9:list.h        ****    T* next {nullptr};
+  10:list.h        **** };
+  11:list.h        **** 
+  12:list.h        **** 
+  13:list.h        **** template<class T>
+  14:list.h        **** struct List
+  15:list.h        **** {
+  16:list.h        **** 
+  17:list.h        ****    T* first {nullptr};
+  18:list.h        ****    T* last  {nullptr};
+  19:list.h        **** 
+  20:list.h        ****    void push_back (T* pobj)
+  98              		.loc 2 20 0
+  99              		.cfi_startproc
+ 100              		@ args = 0, pretend = 0, frame = 0
+ 101              		@ frame_needed = 0, uses_anonymous_args = 0
+ 102              		@ link register save eliminated.
+ 103              	.LVL3:
+  21:list.h        ****    {
+  22:list.h        ****       pobj->prev = last;
+ 104              		.loc 2 22 0
+ 105 0000 054B     		ldr	r3, .L10
+ 106 0002 5A68     		ldr	r2, [r3, #4]
+ 107 0004 4260     		str	r2, [r0, #4]
+  23:list.h        ****       if (last)
+ 108              		.loc 2 23 0
+ 109 0006 002A     		cmp	r2, #0
+ 110 0008 00D0     		beq	.L5
+  24:list.h        ****          last->next = pobj;
+ 111              		.loc 2 24 0
+ 112 000a 9060     		str	r0, [r2, #8]
+ 113              	.L5:
+  25:list.h        ****       last = pobj;
+  26:list.h        ****       if (not first)
+ 114              		.loc 2 26 0
+ 115 000c 1A68     		ldr	r2, [r3]
+  25:list.h        ****       last = pobj;
+ 116              		.loc 2 25 0
+ 117 000e 5860     		str	r0, [r3, #4]
+ 118              		.loc 2 26 0
+ 119 0010 002A     		cmp	r2, #0
+ 120 0012 00D1     		bne	.L4
+  27:list.h        ****          first = pobj;
+ 121              		.loc 2 27 0
+ 122 0014 1860     		str	r0, [r3]
+ 123              	.L4:
+  28:list.h        ****    }
+ 124              		.loc 2 28 0
+ 125              		@ sp needed
+ 126 0016 7047     		bx	lr
+ 127              	.L11:
+ 128              		.align	2
+ 129              	.L10:
+ 130 0018 00000000 		.word	.LANCHOR0
+ 131              		.cfi_endproc
+ 132              	.LFE2415:
+ARM GAS  /tmp/ccRfp5Zy.s 			page 5
+
+
+ 134              		.section	.text.SysTick_Handler,"ax",%progbits
+ 135              		.align	1
+ 136              		.global	SysTick_Handler
+ 137              		.syntax unified
+ 138              		.code	16
+ 139              		.thumb_func
+ 140              		.fpu softvfp
+ 142              	SysTick_Handler:
+ 143              	.LFB1865:
+  61:06.cpp  ****    tickUpdater.tick();
+ 144              		.loc 1 61 0
+ 145              		.cfi_startproc
+ 146              		@ args = 0, pretend = 0, frame = 0
+ 147              		@ frame_needed = 0, uses_anonymous_args = 0
+  62:06.cpp  **** }
+ 148              		.loc 1 62 0
+ 149 0000 054B     		ldr	r3, .L15
+  61:06.cpp  ****    tickUpdater.tick();
+ 150              		.loc 1 61 0
+ 151 0002 10B5     		push	{r4, lr}
+ 152              	.LCFI0:
+ 153              		.cfi_def_cfa_offset 8
+ 154              		.cfi_offset 4, -8
+ 155              		.cfi_offset 14, -4
+  62:06.cpp  **** }
+ 156              		.loc 1 62 0
+ 157 0004 1C68     		ldr	r4, [r3]
+ 158              	.LVL4:
+ 159              	.L14:
+ 160              	.LBB89:
+ 161              	.LBB90:
+  49:06.cpp  ****          p->tick();
+ 162              		.loc 1 49 0
+ 163 0006 002C     		cmp	r4, #0
+ 164 0008 05D0     		beq	.L12
+  50:06.cpp  ****          p = p->next;
+ 165              		.loc 1 50 0
+ 166 000a 2368     		ldr	r3, [r4]
+ 167 000c 2000     		movs	r0, r4
+ 168 000e 1B68     		ldr	r3, [r3]
+ 169 0010 9847     		blx	r3
+ 170              	.LVL5:
+  51:06.cpp  ****       }
+ 171              		.loc 1 51 0
+ 172 0012 A468     		ldr	r4, [r4, #8]
+ 173              	.LVL6:
+ 174 0014 F7E7     		b	.L14
+ 175              	.L12:
+ 176              	.LBE90:
+ 177              	.LBE89:
+  63:06.cpp  **** 
+ 178              		.loc 1 63 0
+ 179              		@ sp needed
+ 180              	.LVL7:
+ 181 0016 10BD     		pop	{r4, pc}
+ 182              	.L16:
+ 183              		.align	2
+ARM GAS  /tmp/ccRfp5Zy.s 			page 6
+
+
+ 184              	.L15:
+ 185 0018 00000000 		.word	.LANCHOR0
+ 186              		.cfi_endproc
+ 187              	.LFE1865:
+ 189              		.section	.text._ZN3PinILm1207961600ELi8EE6toggleEv,"axG",%progbits,_ZN3PinILm1207961600ELi8EE6togg
+ 190              		.align	1
+ 191              		.weak	_ZN3PinILm1207961600ELi8EE6toggleEv
+ 192              		.syntax unified
+ 193              		.code	16
+ 194              		.thumb_func
+ 195              		.fpu softvfp
+ 197              	_ZN3PinILm1207961600ELi8EE6toggleEv:
+ 198              	.LFB2135:
+ 199              		.file 3 "pin.h"
+   1:pin.h         **** #pragma once
+   2:pin.h         **** 
+   3:pin.h         **** #include "defines.h"
+   4:pin.h         **** #include "stm32f0xx.h"
+   5:pin.h         **** 
+   6:pin.h         **** template <uint32_t adr, int n>
+   7:pin.h         **** struct Pin {
+   8:pin.h         **** 	static auto port() { return reinterpret_cast<decltype(GPIOA)>(adr); }
+   9:pin.h         **** 	static void clockEnable()
+  10:pin.h         **** 	{
+  11:pin.h         **** 		// по адресу порта определяем маску разрешения тактир
+  12:pin.h         **** 		constexpr auto mask =
+  13:pin.h         **** 			adr == GPIOA_BASE ? RCC_AHBENR_GPIOAEN :
+  14:pin.h         **** 			adr == GPIOB_BASE ? RCC_AHBENR_GPIOBEN :
+  15:pin.h         **** 			adr == GPIOC_BASE ? RCC_AHBENR_GPIOCEN :
+  16:pin.h         **** 			adr == GPIOD_BASE ? RCC_AHBENR_GPIODEN :
+  17:pin.h         **** 			adr == GPIOF_BASE ? RCC_AHBENR_GPIOFEN : 0;
+  18:pin.h         **** 		RCC->AHBENR |= mask;
+  19:pin.h         **** 	}
+  20:pin.h         **** 	static void setAsOut() { port()->MODER |= 1 << (2*n); }
+  21:pin.h         **** 	static void set()      { port()->BSRR = 1 << n; }
+  22:pin.h         **** 	static void clear()    { port()->BSRR = 1 << (16 + n); }
+  23:pin.h         ****    static bool isSet()    { return (port()->IDR & (1 << n)) != 0;  }
+  24:pin.h         ****    static void toggle()   { isSet() ? clear() : set(); }
+ 200              		.loc 3 24 0
+ 201              		.cfi_startproc
+ 202              		@ args = 0, pretend = 0, frame = 0
+ 203              		@ frame_needed = 0, uses_anonymous_args = 0
+ 204              		@ link register save eliminated.
+ 205              	.LBB97:
+ 206              	.LBB98:
+  23:pin.h         ****    static void toggle()   { isSet() ? clear() : set(); }
+ 207              		.loc 3 23 0
+ 208 0000 8022     		movs	r2, #128
+ 209 0002 044B     		ldr	r3, .L20
+ 210 0004 5200     		lsls	r2, r2, #1
+ 211 0006 1969     		ldr	r1, [r3, #16]
+ 212              	.LBE98:
+ 213              	.LBE97:
+ 214              		.loc 3 24 0
+ 215 0008 1142     		tst	r1, r2
+ 216 000a 01D0     		beq	.L18
+ 217              	.LBB99:
+ARM GAS  /tmp/ccRfp5Zy.s 			page 7
+
+
+ 218              	.LBB100:
+  22:pin.h         ****    static bool isSet()    { return (port()->IDR & (1 << n)) != 0;  }
+ 219              		.loc 3 22 0
+ 220 000c 8022     		movs	r2, #128
+ 221 000e 5204     		lsls	r2, r2, #17
+ 222              	.L18:
+ 223              	.LBE100:
+ 224              	.LBE99:
+ 225              	.LBB101:
+ 226              	.LBB102:
+  21:pin.h         **** 	static void clear()    { port()->BSRR = 1 << (16 + n); }
+ 227              		.loc 3 21 0
+ 228 0010 9A61     		str	r2, [r3, #24]
+ 229              	.LBE102:
+ 230              	.LBE101:
+ 231              		.loc 3 24 0
+ 232              		@ sp needed
+ 233 0012 7047     		bx	lr
+ 234              	.L21:
+ 235              		.align	2
+ 236              	.L20:
+ 237 0014 00080048 		.word	1207961600
+ 238              		.cfi_endproc
+ 239              	.LFE2135:
+ 241              		.section	.text._ZN3PinILm1207961600ELi9EE6toggleEv,"axG",%progbits,_ZN3PinILm1207961600ELi9EE6togg
+ 242              		.align	1
+ 243              		.weak	_ZN3PinILm1207961600ELi9EE6toggleEv
+ 244              		.syntax unified
+ 245              		.code	16
+ 246              		.thumb_func
+ 247              		.fpu softvfp
+ 249              	_ZN3PinILm1207961600ELi9EE6toggleEv:
+ 250              	.LFB2136:
+ 251              		.loc 3 24 0
+ 252              		.cfi_startproc
+ 253              		@ args = 0, pretend = 0, frame = 0
+ 254              		@ frame_needed = 0, uses_anonymous_args = 0
+ 255              		@ link register save eliminated.
+ 256              	.LBB109:
+ 257              	.LBB110:
+  23:pin.h         ****    static void toggle()   { isSet() ? clear() : set(); }
+ 258              		.loc 3 23 0
+ 259 0000 8022     		movs	r2, #128
+ 260 0002 044B     		ldr	r3, .L25
+ 261 0004 9200     		lsls	r2, r2, #2
+ 262 0006 1969     		ldr	r1, [r3, #16]
+ 263              	.LBE110:
+ 264              	.LBE109:
+ 265              		.loc 3 24 0
+ 266 0008 1142     		tst	r1, r2
+ 267 000a 01D0     		beq	.L23
+ 268              	.LBB111:
+ 269              	.LBB112:
+  22:pin.h         ****    static bool isSet()    { return (port()->IDR & (1 << n)) != 0;  }
+ 270              		.loc 3 22 0
+ 271 000c 8022     		movs	r2, #128
+ 272 000e 9204     		lsls	r2, r2, #18
+ARM GAS  /tmp/ccRfp5Zy.s 			page 8
+
+
+ 273              	.L23:
+ 274              	.LBE112:
+ 275              	.LBE111:
+ 276              	.LBB113:
+ 277              	.LBB114:
+  21:pin.h         **** 	static void clear()    { port()->BSRR = 1 << (16 + n); }
+ 278              		.loc 3 21 0
+ 279 0010 9A61     		str	r2, [r3, #24]
+ 280              	.LBE114:
+ 281              	.LBE113:
+ 282              		.loc 3 24 0
+ 283              		@ sp needed
+ 284 0012 7047     		bx	lr
+ 285              	.L26:
+ 286              		.align	2
+ 287              	.L25:
+ 288 0014 00080048 		.word	1207961600
+ 289              		.cfi_endproc
+ 290              	.LFE2136:
+ 292              		.global	__aeabi_uidivmod
+ 293              		.section	.text._Z8process2v,"ax",%progbits
+ 294              		.align	1
+ 295              		.global	_Z8process2v
+ 296              		.syntax unified
+ 297              		.code	16
+ 298              		.thumb_func
+ 299              		.fpu softvfp
+ 301              	_Z8process2v:
+ 302              	.LFB1873:
+  75:06.cpp  ****    // friend TickUpdater;
+  76:06.cpp  **** public:
+  77:06.cpp  ****    // необходимо добавить конструктор с подпиской на из�
+  78:06.cpp  ****    CyclicTask() { tickUpdater.subscribe(this); }
+  79:06.cpp  ****    void operator ()(void(function)())
+  80:06.cpp  ****    { 
+  81:06.cpp  ****       if (time_count == time)
+  82:06.cpp  ****          function(); // выполняем функцию
+  83:06.cpp  ****       time_count %= time;
+  84:06.cpp  ****    }
+  85:06.cpp  **** };
+  86:06.cpp  **** 
+  87:06.cpp  **** } // namespace
+  88:06.cpp  **** // всё что обёрнуто в namespace теперь можно убрать в отдель
+  89:06.cpp  **** 
+  90:06.cpp  **** 
+  91:06.cpp  **** // переписываем программу. Нет необходимости думать о �
+  92:06.cpp  **** // и можно создавать объекты CyclicTask где угодно
+  93:06.cpp  **** void process1()
+  94:06.cpp  **** {
+  95:06.cpp  ****    using BlueLed  = PC8;
+  96:06.cpp  ****    using GreenLed = PC9;
+  97:06.cpp  ****    BlueLed::clockEnable();
+  98:06.cpp  ****    BlueLed::setAsOut();
+  99:06.cpp  ****    GreenLed::setAsOut();
+ 100:06.cpp  ****    
+ 101:06.cpp  ****    BlueLed::set();
+ 102:06.cpp  ****    GreenLed::clear();
+ARM GAS  /tmp/ccRfp5Zy.s 			page 9
+
+
+ 103:06.cpp  **** 
+ 104:06.cpp  ****    // нет необходимости теперь создавать объекты в глоб�
+ 105:06.cpp  ****    CyclicTask<100> cyclic_task;
+ 106:06.cpp  **** 
+ 107:06.cpp  ****    while(1)
+ 108:06.cpp  ****    {
+ 109:06.cpp  ****       cyclic_task ([](){
+ 110:06.cpp  ****          BlueLed::toggle();
+ 111:06.cpp  ****          GreenLed::toggle();				
+ 112:06.cpp  ****       });
+ 113:06.cpp  **** 
+ 114:06.cpp  ****       // делать в этом цикле пока нечего, потому спим до пр
+ 115:06.cpp  ****       __WFI();
+ 116:06.cpp  ****    }		
+ 117:06.cpp  **** }
+ 118:06.cpp  **** 
+ 119:06.cpp  **** // покажем, как легко теперь изменить программу,
+ 120:06.cpp  **** // чтобы было 2 задачи с разной периодичностью
+ 121:06.cpp  **** void process2()
+ 122:06.cpp  **** {
+ 303              		.loc 1 122 0
+ 304              		.cfi_startproc
+ 305              		@ Volatile: function does not return.
+ 306              		@ args = 0, pretend = 0, frame = 32
+ 307              		@ frame_needed = 0, uses_anonymous_args = 0
+ 308              	.LVL8:
+ 309              	.LBB152:
+ 310              	.LBB153:
+  18:pin.h         **** 	}
+ 311              		.loc 3 18 0
+ 312 0000 8023     		movs	r3, #128
+ 313 0002 1E4A     		ldr	r2, .L31
+ 314 0004 1B03     		lsls	r3, r3, #12
+ 315 0006 5169     		ldr	r1, [r2, #20]
+ 316              	.LBE153:
+ 317              	.LBE152:
+ 318              		.loc 1 122 0
+ 319 0008 10B5     		push	{r4, lr}
+ 320              	.LCFI1:
+ 321              		.cfi_def_cfa_offset 8
+ 322              		.cfi_offset 4, -8
+ 323              		.cfi_offset 14, -4
+ 324              	.LBB155:
+ 325              	.LBB154:
+  18:pin.h         **** 	}
+ 326              		.loc 3 18 0
+ 327 000a 0B43     		orrs	r3, r1
+ 328 000c 5361     		str	r3, [r2, #20]
+ 329              	.LBE154:
+ 330              	.LBE155:
+ 331              	.LBB156:
+ 332              	.LBB157:
+  20:pin.h         **** 	static void set()      { port()->BSRR = 1 << n; }
+ 333              		.loc 3 20 0
+ 334 000e 8022     		movs	r2, #128
+ 335 0010 1B4B     		ldr	r3, .L31+4
+ 336 0012 5202     		lsls	r2, r2, #9
+ARM GAS  /tmp/ccRfp5Zy.s 			page 10
+
+
+ 337 0014 1968     		ldr	r1, [r3]
+ 338              	.LBE157:
+ 339              	.LBE156:
+ 340              	.LBB159:
+ 341              	.LBB160:
+ 342              	.LBB161:
+ 343              	.LBB162:
+ 344              	.LBB163:
+ 345              	.LBB164:
+   6:list.h        ****    T* prev {nullptr};
+ 346              		.loc 2 6 0
+ 347 0016 0024     		movs	r4, #0
+ 348              	.LBE164:
+ 349              	.LBE163:
+ 350              	.LBE162:
+ 351              	.LBE161:
+ 352              	.LBE160:
+ 353              	.LBE159:
+ 354              	.LBB176:
+ 355              	.LBB158:
+  20:pin.h         **** 	static void set()      { port()->BSRR = 1 << n; }
+ 356              		.loc 3 20 0
+ 357 0018 0A43     		orrs	r2, r1
+ 358 001a 1A60     		str	r2, [r3]
+ 359              	.LBE158:
+ 360              	.LBE176:
+ 361              	.LBB177:
+ 362              	.LBB178:
+ 363 001c 8022     		movs	r2, #128
+ 364 001e 1968     		ldr	r1, [r3]
+ 365 0020 D202     		lsls	r2, r2, #11
+ 366 0022 0A43     		orrs	r2, r1
+ 367 0024 1A60     		str	r2, [r3]
+ 368              	.LBE178:
+ 369              	.LBE177:
+ 370              	.LBB179:
+ 371              	.LBB174:
+ 372              	.LBB172:
+  78:06.cpp  ****    void operator ()(void(function)())
+ 373              		.loc 1 78 0
+ 374 0026 174B     		ldr	r3, .L31+8
+ 375              	.LBE172:
+ 376              	.LBE174:
+ 377              	.LBE179:
+ 378              		.loc 1 122 0
+ 379 0028 88B0     		sub	sp, sp, #32
+ 380              	.LCFI2:
+ 381              		.cfi_def_cfa_offset 40
+ 382              	.LVL9:
+ 383              	.LBB180:
+ 384              	.LBB175:
+ 385              	.LBB173:
+  78:06.cpp  ****    void operator ()(void(function)())
+ 386              		.loc 1 78 0
+ 387 002a 0833     		adds	r3, r3, #8
+ 388              	.LBB167:
+ 389              	.LBB168:
+ARM GAS  /tmp/ccRfp5Zy.s 			page 11
+
+
+  41:06.cpp  ****    void unsubscribe(TickSubscriber* p) { remove(p); }
+ 390              		.loc 1 41 0
+ 391 002c 6846     		mov	r0, sp
+ 392              	.LBE168:
+ 393              	.LBE167:
+ 394              	.LBB170:
+ 395              	.LBB166:
+ 396              	.LBB165:
+   6:list.h        ****    T* prev {nullptr};
+ 397              		.loc 2 6 0
+ 398 002e 0194     		str	r4, [sp, #4]
+ 399 0030 0294     		str	r4, [sp, #8]
+ 400              	.LVL10:
+ 401              	.LBE165:
+ 402              	.LBE166:
+ 403              	.LBE170:
+  78:06.cpp  ****    void operator ()(void(function)())
+ 404              		.loc 1 78 0
+ 405 0032 0093     		str	r3, [sp]
+ 406 0034 0394     		str	r4, [sp, #12]
+ 407              	.LVL11:
+ 408              	.LBB171:
+ 409              	.LBB169:
+  41:06.cpp  ****    void unsubscribe(TickSubscriber* p) { remove(p); }
+ 410              		.loc 1 41 0
+ 411 0036 FFF7FEFF 		bl	_ZN4ListIN12_GLOBAL__N_114TickSubscriberEE9push_backEPS1_.constprop.8
+ 412              	.LVL12:
+ 413              	.LBE169:
+ 414              	.LBE171:
+ 415              	.LBE173:
+ 416              	.LBE175:
+ 417              	.LBE180:
+ 418              	.LBB181:
+ 419              	.LBB182:
+ 420              	.LBB183:
+  78:06.cpp  ****    void operator ()(void(function)())
+ 421              		.loc 1 78 0
+ 422 003a 134B     		ldr	r3, .L31+12
+ 423              	.LBB184:
+ 424              	.LBB185:
+  41:06.cpp  ****    void unsubscribe(TickSubscriber* p) { remove(p); }
+ 425              		.loc 1 41 0
+ 426 003c 04A8     		add	r0, sp, #16
+ 427              	.LVL13:
+ 428              	.LBE185:
+ 429              	.LBE184:
+  78:06.cpp  ****    void operator ()(void(function)())
+ 430              		.loc 1 78 0
+ 431 003e 0833     		adds	r3, r3, #8
+ 432              	.LBB187:
+ 433              	.LBB188:
+ 434              	.LBB189:
+   6:list.h        ****    T* prev {nullptr};
+ 435              		.loc 2 6 0
+ 436 0040 0594     		str	r4, [sp, #20]
+ 437 0042 0694     		str	r4, [sp, #24]
+ 438              	.LVL14:
+ARM GAS  /tmp/ccRfp5Zy.s 			page 12
+
+
+ 439              	.LBE189:
+ 440              	.LBE188:
+ 441              	.LBE187:
+  78:06.cpp  ****    void operator ()(void(function)())
+ 442              		.loc 1 78 0
+ 443 0044 0794     		str	r4, [sp, #28]
+ 444              	.LVL15:
+ 445 0046 0493     		str	r3, [sp, #16]
+ 446              	.LBB190:
+ 447              	.LBB186:
+  41:06.cpp  ****    void unsubscribe(TickSubscriber* p) { remove(p); }
+ 448              		.loc 1 41 0
+ 449 0048 FFF7FEFF 		bl	_ZN4ListIN12_GLOBAL__N_114TickSubscriberEE9push_backEPS1_.constprop.8
+ 450              	.LVL16:
+ 451              	.LBE186:
+ 452              	.LBE190:
+ 453              	.LBE183:
+ 454              	.LBE182:
+ 455              	.LBE181:
+ 456              	.LBB191:
+ 457              	.LBB192:
+ 458              	.LBB193:
+  81:06.cpp  ****          function(); // выполняем функцию
+ 459              		.loc 1 81 0
+ 460 004c 2D34     		adds	r4, r4, #45
+ 461 004e FF34     		adds	r4, r4, #255
+ 462              	.L30:
+ 463              	.LVL17:
+ 464              	.LBE193:
+ 465              	.LBE192:
+ 466              	.LBB199:
+ 467              	.LBB200:
+  81:06.cpp  ****          function(); // выполняем функцию
+ 468              		.loc 1 81 0 is_stmt 0 discriminator 1
+ 469 0050 039B     		ldr	r3, [sp, #12]
+ 470 0052 C82B     		cmp	r3, #200
+ 471 0054 01D1     		bne	.L28
+ 472              	.LVL18:
+ 473              	.LBB201:
+ 474              	.LBB202:
+ 475              	.LBB203:
+ 123:06.cpp  ****    using BlueLed  = PC8;
+ 124:06.cpp  ****    using GreenLed = PC9;
+ 125:06.cpp  ****    BlueLed::clockEnable();
+ 126:06.cpp  ****    BlueLed::setAsOut();
+ 127:06.cpp  ****    GreenLed::setAsOut();
+ 128:06.cpp  **** 
+ 129:06.cpp  ****    // вообще не задумываемся о прерываниях и подписках, �
+ 130:06.cpp  ****    CyclicTask<200> _200ms;
+ 131:06.cpp  ****    CyclicTask<300> _300ms;
+ 132:06.cpp  **** 
+ 133:06.cpp  ****    while(1)
+ 134:06.cpp  ****    {
+ 135:06.cpp  ****       _200ms ([](){ BlueLed::toggle();  });
+ 476              		.loc 1 135 0 is_stmt 1
+ 477 0056 FFF7FEFF 		bl	_ZN3PinILm1207961600ELi8EE6toggleEv
+ 478              	.LVL19:
+ARM GAS  /tmp/ccRfp5Zy.s 			page 13
+
+
+ 479              	.L28:
+ 480              	.LBE203:
+ 481              	.LBE202:
+ 482              	.LBE201:
+  83:06.cpp  ****    }
+ 483              		.loc 1 83 0
+ 484 005a 0398     		ldr	r0, [sp, #12]
+ 485 005c C821     		movs	r1, #200
+ 486 005e FFF7FEFF 		bl	__aeabi_uidivmod
+ 487              	.LVL20:
+ 488              	.LBE200:
+ 489              	.LBE199:
+ 490              	.LBB205:
+ 491              	.LBB197:
+  81:06.cpp  ****          function(); // выполняем функцию
+ 492              		.loc 1 81 0
+ 493 0062 079B     		ldr	r3, [sp, #28]
+ 494              	.LBE197:
+ 495              	.LBE205:
+ 496              	.LBB206:
+ 497              	.LBB204:
+  83:06.cpp  ****    }
+ 498              		.loc 1 83 0
+ 499 0064 0391     		str	r1, [sp, #12]
+ 500              	.LVL21:
+ 501              	.LBE204:
+ 502              	.LBE206:
+ 503              	.LBB207:
+ 504              	.LBB198:
+  81:06.cpp  ****          function(); // выполняем функцию
+ 505              		.loc 1 81 0
+ 506 0066 A342     		cmp	r3, r4
+ 507 0068 01D1     		bne	.L29
+ 508              	.LVL22:
+ 509              	.LBB194:
+ 510              	.LBB195:
+ 511              	.LBB196:
+ 136:06.cpp  **** 
+ 137:06.cpp  ****       _300ms ([](){ GreenLed::toggle(); });
+ 512              		.loc 1 137 0
+ 513 006a FFF7FEFF 		bl	_ZN3PinILm1207961600ELi9EE6toggleEv
+ 514              	.LVL23:
+ 515              	.L29:
+ 516              	.LBE196:
+ 517              	.LBE195:
+ 518              	.LBE194:
+  83:06.cpp  ****    }
+ 519              		.loc 1 83 0
+ 520 006e 0798     		ldr	r0, [sp, #28]
+ 521 0070 2100     		movs	r1, r4
+ 522 0072 FFF7FEFF 		bl	__aeabi_uidivmod
+ 523              	.LVL24:
+ 524 0076 0791     		str	r1, [sp, #28]
+ 525              	.LBE198:
+ 526              	.LBE207:
+ 527              	.LBB208:
+ 528              	.LBB209:
+ARM GAS  /tmp/ccRfp5Zy.s 			page 14
+
+
+ 529              		.file 4 "../CMSIS/cmsis_gcc.h"
+   1:../CMSIS/cmsis_gcc.h **** /**************************************************************************//**
+   2:../CMSIS/cmsis_gcc.h ****  * @file     cmsis_gcc.h
+   3:../CMSIS/cmsis_gcc.h ****  * @brief    CMSIS Cortex-M Core Function/Instruction Header File
+   4:../CMSIS/cmsis_gcc.h ****  * @version  V4.30
+   5:../CMSIS/cmsis_gcc.h ****  * @date     20. October 2015
+   6:../CMSIS/cmsis_gcc.h ****  ******************************************************************************/
+   7:../CMSIS/cmsis_gcc.h **** /* Copyright (c) 2009 - 2015 ARM LIMITED
+   8:../CMSIS/cmsis_gcc.h **** 
+   9:../CMSIS/cmsis_gcc.h ****    All rights reserved.
+  10:../CMSIS/cmsis_gcc.h ****    Redistribution and use in source and binary forms, with or without
+  11:../CMSIS/cmsis_gcc.h ****    modification, are permitted provided that the following conditions are met:
+  12:../CMSIS/cmsis_gcc.h ****    - Redistributions of source code must retain the above copyright
+  13:../CMSIS/cmsis_gcc.h ****      notice, this list of conditions and the following disclaimer.
+  14:../CMSIS/cmsis_gcc.h ****    - Redistributions in binary form must reproduce the above copyright
+  15:../CMSIS/cmsis_gcc.h ****      notice, this list of conditions and the following disclaimer in the
+  16:../CMSIS/cmsis_gcc.h ****      documentation and/or other materials provided with the distribution.
+  17:../CMSIS/cmsis_gcc.h ****    - Neither the name of ARM nor the names of its contributors may be used
+  18:../CMSIS/cmsis_gcc.h ****      to endorse or promote products derived from this software without
+  19:../CMSIS/cmsis_gcc.h ****      specific prior written permission.
+  20:../CMSIS/cmsis_gcc.h ****    *
+  21:../CMSIS/cmsis_gcc.h ****    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+  22:../CMSIS/cmsis_gcc.h ****    AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+  23:../CMSIS/cmsis_gcc.h ****    IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+  24:../CMSIS/cmsis_gcc.h ****    ARE DISCLAIMED. IN NO EVENT SHALL COPYRIGHT HOLDERS AND CONTRIBUTORS BE
+  25:../CMSIS/cmsis_gcc.h ****    LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+  26:../CMSIS/cmsis_gcc.h ****    CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+  27:../CMSIS/cmsis_gcc.h ****    SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+  28:../CMSIS/cmsis_gcc.h ****    INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+  29:../CMSIS/cmsis_gcc.h ****    CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+  30:../CMSIS/cmsis_gcc.h ****    ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+  31:../CMSIS/cmsis_gcc.h ****    POSSIBILITY OF SUCH DAMAGE.
+  32:../CMSIS/cmsis_gcc.h ****    ---------------------------------------------------------------------------*/
+  33:../CMSIS/cmsis_gcc.h **** 
+  34:../CMSIS/cmsis_gcc.h **** 
+  35:../CMSIS/cmsis_gcc.h **** #ifndef __CMSIS_GCC_H
+  36:../CMSIS/cmsis_gcc.h **** #define __CMSIS_GCC_H
+  37:../CMSIS/cmsis_gcc.h **** 
+  38:../CMSIS/cmsis_gcc.h **** /* ignore some GCC warnings */
+  39:../CMSIS/cmsis_gcc.h **** #if defined ( __GNUC__ )
+  40:../CMSIS/cmsis_gcc.h **** #pragma GCC diagnostic push
+  41:../CMSIS/cmsis_gcc.h **** #pragma GCC diagnostic ignored "-Wsign-conversion"
+  42:../CMSIS/cmsis_gcc.h **** #pragma GCC diagnostic ignored "-Wconversion"
+  43:../CMSIS/cmsis_gcc.h **** #pragma GCC diagnostic ignored "-Wunused-parameter"
+  44:../CMSIS/cmsis_gcc.h **** #endif
+  45:../CMSIS/cmsis_gcc.h **** 
+  46:../CMSIS/cmsis_gcc.h **** 
+  47:../CMSIS/cmsis_gcc.h **** /* ###########################  Core Function Access  ########################### */
+  48:../CMSIS/cmsis_gcc.h **** /** \ingroup  CMSIS_Core_FunctionInterface
+  49:../CMSIS/cmsis_gcc.h ****     \defgroup CMSIS_Core_RegAccFunctions CMSIS Core Register Access Functions
+  50:../CMSIS/cmsis_gcc.h ****   @{
+  51:../CMSIS/cmsis_gcc.h ****  */
+  52:../CMSIS/cmsis_gcc.h **** 
+  53:../CMSIS/cmsis_gcc.h **** /**
+  54:../CMSIS/cmsis_gcc.h ****   \brief   Enable IRQ Interrupts
+  55:../CMSIS/cmsis_gcc.h ****   \details Enables IRQ interrupts by clearing the I-bit in the CPSR.
+  56:../CMSIS/cmsis_gcc.h ****            Can only be executed in Privileged modes.
+ARM GAS  /tmp/ccRfp5Zy.s 			page 15
+
+
+  57:../CMSIS/cmsis_gcc.h ****  */
+  58:../CMSIS/cmsis_gcc.h **** __attribute__( ( always_inline ) ) __STATIC_INLINE void __enable_irq(void)
+  59:../CMSIS/cmsis_gcc.h **** {
+  60:../CMSIS/cmsis_gcc.h ****   __ASM volatile ("cpsie i" : : : "memory");
+  61:../CMSIS/cmsis_gcc.h **** }
+  62:../CMSIS/cmsis_gcc.h **** 
+  63:../CMSIS/cmsis_gcc.h **** 
+  64:../CMSIS/cmsis_gcc.h **** /**
+  65:../CMSIS/cmsis_gcc.h ****   \brief   Disable IRQ Interrupts
+  66:../CMSIS/cmsis_gcc.h ****   \details Disables IRQ interrupts by setting the I-bit in the CPSR.
+  67:../CMSIS/cmsis_gcc.h ****   Can only be executed in Privileged modes.
+  68:../CMSIS/cmsis_gcc.h ****  */
+  69:../CMSIS/cmsis_gcc.h **** __attribute__( ( always_inline ) ) __STATIC_INLINE void __disable_irq(void)
+  70:../CMSIS/cmsis_gcc.h **** {
+  71:../CMSIS/cmsis_gcc.h ****   __ASM volatile ("cpsid i" : : : "memory");
+  72:../CMSIS/cmsis_gcc.h **** }
+  73:../CMSIS/cmsis_gcc.h **** 
+  74:../CMSIS/cmsis_gcc.h **** 
+  75:../CMSIS/cmsis_gcc.h **** /**
+  76:../CMSIS/cmsis_gcc.h ****   \brief   Get Control Register
+  77:../CMSIS/cmsis_gcc.h ****   \details Returns the content of the Control Register.
+  78:../CMSIS/cmsis_gcc.h ****   \return               Control Register value
+  79:../CMSIS/cmsis_gcc.h ****  */
+  80:../CMSIS/cmsis_gcc.h **** __attribute__( ( always_inline ) ) __STATIC_INLINE uint32_t __get_CONTROL(void)
+  81:../CMSIS/cmsis_gcc.h **** {
+  82:../CMSIS/cmsis_gcc.h ****   uint32_t result;
+  83:../CMSIS/cmsis_gcc.h **** 
+  84:../CMSIS/cmsis_gcc.h ****   __ASM volatile ("MRS %0, control" : "=r" (result) );
+  85:../CMSIS/cmsis_gcc.h ****   return(result);
+  86:../CMSIS/cmsis_gcc.h **** }
+  87:../CMSIS/cmsis_gcc.h **** 
+  88:../CMSIS/cmsis_gcc.h **** 
+  89:../CMSIS/cmsis_gcc.h **** /**
+  90:../CMSIS/cmsis_gcc.h ****   \brief   Set Control Register
+  91:../CMSIS/cmsis_gcc.h ****   \details Writes the given value to the Control Register.
+  92:../CMSIS/cmsis_gcc.h ****   \param [in]    control  Control Register value to set
+  93:../CMSIS/cmsis_gcc.h ****  */
+  94:../CMSIS/cmsis_gcc.h **** __attribute__( ( always_inline ) ) __STATIC_INLINE void __set_CONTROL(uint32_t control)
+  95:../CMSIS/cmsis_gcc.h **** {
+  96:../CMSIS/cmsis_gcc.h ****   __ASM volatile ("MSR control, %0" : : "r" (control) : "memory");
+  97:../CMSIS/cmsis_gcc.h **** }
+  98:../CMSIS/cmsis_gcc.h **** 
+  99:../CMSIS/cmsis_gcc.h **** 
+ 100:../CMSIS/cmsis_gcc.h **** /**
+ 101:../CMSIS/cmsis_gcc.h ****   \brief   Get IPSR Register
+ 102:../CMSIS/cmsis_gcc.h ****   \details Returns the content of the IPSR Register.
+ 103:../CMSIS/cmsis_gcc.h ****   \return               IPSR Register value
+ 104:../CMSIS/cmsis_gcc.h ****  */
+ 105:../CMSIS/cmsis_gcc.h **** __attribute__( ( always_inline ) ) __STATIC_INLINE uint32_t __get_IPSR(void)
+ 106:../CMSIS/cmsis_gcc.h **** {
+ 107:../CMSIS/cmsis_gcc.h ****   uint32_t result;
+ 108:../CMSIS/cmsis_gcc.h **** 
+ 109:../CMSIS/cmsis_gcc.h ****   __ASM volatile ("MRS %0, ipsr" : "=r" (result) );
+ 110:../CMSIS/cmsis_gcc.h ****   return(result);
+ 111:../CMSIS/cmsis_gcc.h **** }
+ 112:../CMSIS/cmsis_gcc.h **** 
+ 113:../CMSIS/cmsis_gcc.h **** 
+ARM GAS  /tmp/ccRfp5Zy.s 			page 16
+
+
+ 114:../CMSIS/cmsis_gcc.h **** /**
+ 115:../CMSIS/cmsis_gcc.h ****   \brief   Get APSR Register
+ 116:../CMSIS/cmsis_gcc.h ****   \details Returns the content of the APSR Register.
+ 117:../CMSIS/cmsis_gcc.h ****   \return               APSR Register value
+ 118:../CMSIS/cmsis_gcc.h ****  */
+ 119:../CMSIS/cmsis_gcc.h **** __attribute__( ( always_inline ) ) __STATIC_INLINE uint32_t __get_APSR(void)
+ 120:../CMSIS/cmsis_gcc.h **** {
+ 121:../CMSIS/cmsis_gcc.h ****   uint32_t result;
+ 122:../CMSIS/cmsis_gcc.h **** 
+ 123:../CMSIS/cmsis_gcc.h ****   __ASM volatile ("MRS %0, apsr" : "=r" (result) );
+ 124:../CMSIS/cmsis_gcc.h ****   return(result);
+ 125:../CMSIS/cmsis_gcc.h **** }
+ 126:../CMSIS/cmsis_gcc.h **** 
+ 127:../CMSIS/cmsis_gcc.h **** 
+ 128:../CMSIS/cmsis_gcc.h **** /**
+ 129:../CMSIS/cmsis_gcc.h ****   \brief   Get xPSR Register
+ 130:../CMSIS/cmsis_gcc.h ****   \details Returns the content of the xPSR Register.
+ 131:../CMSIS/cmsis_gcc.h **** 
+ 132:../CMSIS/cmsis_gcc.h ****     \return               xPSR Register value
+ 133:../CMSIS/cmsis_gcc.h ****  */
+ 134:../CMSIS/cmsis_gcc.h **** __attribute__( ( always_inline ) ) __STATIC_INLINE uint32_t __get_xPSR(void)
+ 135:../CMSIS/cmsis_gcc.h **** {
+ 136:../CMSIS/cmsis_gcc.h ****   uint32_t result;
+ 137:../CMSIS/cmsis_gcc.h **** 
+ 138:../CMSIS/cmsis_gcc.h ****   __ASM volatile ("MRS %0, xpsr" : "=r" (result) );
+ 139:../CMSIS/cmsis_gcc.h ****   return(result);
+ 140:../CMSIS/cmsis_gcc.h **** }
+ 141:../CMSIS/cmsis_gcc.h **** 
+ 142:../CMSIS/cmsis_gcc.h **** 
+ 143:../CMSIS/cmsis_gcc.h **** /**
+ 144:../CMSIS/cmsis_gcc.h ****   \brief   Get Process Stack Pointer
+ 145:../CMSIS/cmsis_gcc.h ****   \details Returns the current value of the Process Stack Pointer (PSP).
+ 146:../CMSIS/cmsis_gcc.h ****   \return               PSP Register value
+ 147:../CMSIS/cmsis_gcc.h ****  */
+ 148:../CMSIS/cmsis_gcc.h **** __attribute__( ( always_inline ) ) __STATIC_INLINE uint32_t __get_PSP(void)
+ 149:../CMSIS/cmsis_gcc.h **** {
+ 150:../CMSIS/cmsis_gcc.h ****   register uint32_t result;
+ 151:../CMSIS/cmsis_gcc.h **** 
+ 152:../CMSIS/cmsis_gcc.h ****   __ASM volatile ("MRS %0, psp\n"  : "=r" (result) );
+ 153:../CMSIS/cmsis_gcc.h ****   return(result);
+ 154:../CMSIS/cmsis_gcc.h **** }
+ 155:../CMSIS/cmsis_gcc.h **** 
+ 156:../CMSIS/cmsis_gcc.h **** 
+ 157:../CMSIS/cmsis_gcc.h **** /**
+ 158:../CMSIS/cmsis_gcc.h ****   \brief   Set Process Stack Pointer
+ 159:../CMSIS/cmsis_gcc.h ****   \details Assigns the given value to the Process Stack Pointer (PSP).
+ 160:../CMSIS/cmsis_gcc.h ****   \param [in]    topOfProcStack  Process Stack Pointer value to set
+ 161:../CMSIS/cmsis_gcc.h ****  */
+ 162:../CMSIS/cmsis_gcc.h **** __attribute__( ( always_inline ) ) __STATIC_INLINE void __set_PSP(uint32_t topOfProcStack)
+ 163:../CMSIS/cmsis_gcc.h **** {
+ 164:../CMSIS/cmsis_gcc.h ****   __ASM volatile ("MSR psp, %0\n" : : "r" (topOfProcStack) : "sp");
+ 165:../CMSIS/cmsis_gcc.h **** }
+ 166:../CMSIS/cmsis_gcc.h **** 
+ 167:../CMSIS/cmsis_gcc.h **** 
+ 168:../CMSIS/cmsis_gcc.h **** /**
+ 169:../CMSIS/cmsis_gcc.h ****   \brief   Get Main Stack Pointer
+ 170:../CMSIS/cmsis_gcc.h ****   \details Returns the current value of the Main Stack Pointer (MSP).
+ARM GAS  /tmp/ccRfp5Zy.s 			page 17
+
+
+ 171:../CMSIS/cmsis_gcc.h ****   \return               MSP Register value
+ 172:../CMSIS/cmsis_gcc.h ****  */
+ 173:../CMSIS/cmsis_gcc.h **** __attribute__( ( always_inline ) ) __STATIC_INLINE uint32_t __get_MSP(void)
+ 174:../CMSIS/cmsis_gcc.h **** {
+ 175:../CMSIS/cmsis_gcc.h ****   register uint32_t result;
+ 176:../CMSIS/cmsis_gcc.h **** 
+ 177:../CMSIS/cmsis_gcc.h ****   __ASM volatile ("MRS %0, msp\n" : "=r" (result) );
+ 178:../CMSIS/cmsis_gcc.h ****   return(result);
+ 179:../CMSIS/cmsis_gcc.h **** }
+ 180:../CMSIS/cmsis_gcc.h **** 
+ 181:../CMSIS/cmsis_gcc.h **** 
+ 182:../CMSIS/cmsis_gcc.h **** /**
+ 183:../CMSIS/cmsis_gcc.h ****   \brief   Set Main Stack Pointer
+ 184:../CMSIS/cmsis_gcc.h ****   \details Assigns the given value to the Main Stack Pointer (MSP).
+ 185:../CMSIS/cmsis_gcc.h **** 
+ 186:../CMSIS/cmsis_gcc.h ****     \param [in]    topOfMainStack  Main Stack Pointer value to set
+ 187:../CMSIS/cmsis_gcc.h ****  */
+ 188:../CMSIS/cmsis_gcc.h **** __attribute__( ( always_inline ) ) __STATIC_INLINE void __set_MSP(uint32_t topOfMainStack)
+ 189:../CMSIS/cmsis_gcc.h **** {
+ 190:../CMSIS/cmsis_gcc.h ****   __ASM volatile ("MSR msp, %0\n" : : "r" (topOfMainStack) : "sp");
+ 191:../CMSIS/cmsis_gcc.h **** }
+ 192:../CMSIS/cmsis_gcc.h **** 
+ 193:../CMSIS/cmsis_gcc.h **** 
+ 194:../CMSIS/cmsis_gcc.h **** /**
+ 195:../CMSIS/cmsis_gcc.h ****   \brief   Get Priority Mask
+ 196:../CMSIS/cmsis_gcc.h ****   \details Returns the current state of the priority mask bit from the Priority Mask Register.
+ 197:../CMSIS/cmsis_gcc.h ****   \return               Priority Mask value
+ 198:../CMSIS/cmsis_gcc.h ****  */
+ 199:../CMSIS/cmsis_gcc.h **** __attribute__( ( always_inline ) ) __STATIC_INLINE uint32_t __get_PRIMASK(void)
+ 200:../CMSIS/cmsis_gcc.h **** {
+ 201:../CMSIS/cmsis_gcc.h ****   uint32_t result;
+ 202:../CMSIS/cmsis_gcc.h **** 
+ 203:../CMSIS/cmsis_gcc.h ****   __ASM volatile ("MRS %0, primask" : "=r" (result) );
+ 204:../CMSIS/cmsis_gcc.h ****   return(result);
+ 205:../CMSIS/cmsis_gcc.h **** }
+ 206:../CMSIS/cmsis_gcc.h **** 
+ 207:../CMSIS/cmsis_gcc.h **** 
+ 208:../CMSIS/cmsis_gcc.h **** /**
+ 209:../CMSIS/cmsis_gcc.h ****   \brief   Set Priority Mask
+ 210:../CMSIS/cmsis_gcc.h ****   \details Assigns the given value to the Priority Mask Register.
+ 211:../CMSIS/cmsis_gcc.h ****   \param [in]    priMask  Priority Mask
+ 212:../CMSIS/cmsis_gcc.h ****  */
+ 213:../CMSIS/cmsis_gcc.h **** __attribute__( ( always_inline ) ) __STATIC_INLINE void __set_PRIMASK(uint32_t priMask)
+ 214:../CMSIS/cmsis_gcc.h **** {
+ 215:../CMSIS/cmsis_gcc.h ****   __ASM volatile ("MSR primask, %0" : : "r" (priMask) : "memory");
+ 216:../CMSIS/cmsis_gcc.h **** }
+ 217:../CMSIS/cmsis_gcc.h **** 
+ 218:../CMSIS/cmsis_gcc.h **** 
+ 219:../CMSIS/cmsis_gcc.h **** #if       (__CORTEX_M >= 0x03U)
+ 220:../CMSIS/cmsis_gcc.h **** 
+ 221:../CMSIS/cmsis_gcc.h **** /**
+ 222:../CMSIS/cmsis_gcc.h ****   \brief   Enable FIQ
+ 223:../CMSIS/cmsis_gcc.h ****   \details Enables FIQ interrupts by clearing the F-bit in the CPSR.
+ 224:../CMSIS/cmsis_gcc.h ****            Can only be executed in Privileged modes.
+ 225:../CMSIS/cmsis_gcc.h ****  */
+ 226:../CMSIS/cmsis_gcc.h **** __attribute__( ( always_inline ) ) __STATIC_INLINE void __enable_fault_irq(void)
+ 227:../CMSIS/cmsis_gcc.h **** {
+ARM GAS  /tmp/ccRfp5Zy.s 			page 18
+
+
+ 228:../CMSIS/cmsis_gcc.h ****   __ASM volatile ("cpsie f" : : : "memory");
+ 229:../CMSIS/cmsis_gcc.h **** }
+ 230:../CMSIS/cmsis_gcc.h **** 
+ 231:../CMSIS/cmsis_gcc.h **** 
+ 232:../CMSIS/cmsis_gcc.h **** /**
+ 233:../CMSIS/cmsis_gcc.h ****   \brief   Disable FIQ
+ 234:../CMSIS/cmsis_gcc.h ****   \details Disables FIQ interrupts by setting the F-bit in the CPSR.
+ 235:../CMSIS/cmsis_gcc.h ****            Can only be executed in Privileged modes.
+ 236:../CMSIS/cmsis_gcc.h ****  */
+ 237:../CMSIS/cmsis_gcc.h **** __attribute__( ( always_inline ) ) __STATIC_INLINE void __disable_fault_irq(void)
+ 238:../CMSIS/cmsis_gcc.h **** {
+ 239:../CMSIS/cmsis_gcc.h ****   __ASM volatile ("cpsid f" : : : "memory");
+ 240:../CMSIS/cmsis_gcc.h **** }
+ 241:../CMSIS/cmsis_gcc.h **** 
+ 242:../CMSIS/cmsis_gcc.h **** 
+ 243:../CMSIS/cmsis_gcc.h **** /**
+ 244:../CMSIS/cmsis_gcc.h ****   \brief   Get Base Priority
+ 245:../CMSIS/cmsis_gcc.h ****   \details Returns the current value of the Base Priority register.
+ 246:../CMSIS/cmsis_gcc.h ****   \return               Base Priority register value
+ 247:../CMSIS/cmsis_gcc.h ****  */
+ 248:../CMSIS/cmsis_gcc.h **** __attribute__( ( always_inline ) ) __STATIC_INLINE uint32_t __get_BASEPRI(void)
+ 249:../CMSIS/cmsis_gcc.h **** {
+ 250:../CMSIS/cmsis_gcc.h ****   uint32_t result;
+ 251:../CMSIS/cmsis_gcc.h **** 
+ 252:../CMSIS/cmsis_gcc.h ****   __ASM volatile ("MRS %0, basepri" : "=r" (result) );
+ 253:../CMSIS/cmsis_gcc.h ****   return(result);
+ 254:../CMSIS/cmsis_gcc.h **** }
+ 255:../CMSIS/cmsis_gcc.h **** 
+ 256:../CMSIS/cmsis_gcc.h **** 
+ 257:../CMSIS/cmsis_gcc.h **** /**
+ 258:../CMSIS/cmsis_gcc.h ****   \brief   Set Base Priority
+ 259:../CMSIS/cmsis_gcc.h ****   \details Assigns the given value to the Base Priority register.
+ 260:../CMSIS/cmsis_gcc.h ****   \param [in]    basePri  Base Priority value to set
+ 261:../CMSIS/cmsis_gcc.h ****  */
+ 262:../CMSIS/cmsis_gcc.h **** __attribute__( ( always_inline ) ) __STATIC_INLINE void __set_BASEPRI(uint32_t value)
+ 263:../CMSIS/cmsis_gcc.h **** {
+ 264:../CMSIS/cmsis_gcc.h ****   __ASM volatile ("MSR basepri, %0" : : "r" (value) : "memory");
+ 265:../CMSIS/cmsis_gcc.h **** }
+ 266:../CMSIS/cmsis_gcc.h **** 
+ 267:../CMSIS/cmsis_gcc.h **** 
+ 268:../CMSIS/cmsis_gcc.h **** /**
+ 269:../CMSIS/cmsis_gcc.h ****   \brief   Set Base Priority with condition
+ 270:../CMSIS/cmsis_gcc.h ****   \details Assigns the given value to the Base Priority register only if BASEPRI masking is disable
+ 271:../CMSIS/cmsis_gcc.h ****            or the new value increases the BASEPRI priority level.
+ 272:../CMSIS/cmsis_gcc.h ****   \param [in]    basePri  Base Priority value to set
+ 273:../CMSIS/cmsis_gcc.h ****  */
+ 274:../CMSIS/cmsis_gcc.h **** __attribute__( ( always_inline ) ) __STATIC_INLINE void __set_BASEPRI_MAX(uint32_t value)
+ 275:../CMSIS/cmsis_gcc.h **** {
+ 276:../CMSIS/cmsis_gcc.h ****   __ASM volatile ("MSR basepri_max, %0" : : "r" (value) : "memory");
+ 277:../CMSIS/cmsis_gcc.h **** }
+ 278:../CMSIS/cmsis_gcc.h **** 
+ 279:../CMSIS/cmsis_gcc.h **** 
+ 280:../CMSIS/cmsis_gcc.h **** /**
+ 281:../CMSIS/cmsis_gcc.h ****   \brief   Get Fault Mask
+ 282:../CMSIS/cmsis_gcc.h ****   \details Returns the current value of the Fault Mask register.
+ 283:../CMSIS/cmsis_gcc.h ****   \return               Fault Mask register value
+ 284:../CMSIS/cmsis_gcc.h ****  */
+ARM GAS  /tmp/ccRfp5Zy.s 			page 19
+
+
+ 285:../CMSIS/cmsis_gcc.h **** __attribute__( ( always_inline ) ) __STATIC_INLINE uint32_t __get_FAULTMASK(void)
+ 286:../CMSIS/cmsis_gcc.h **** {
+ 287:../CMSIS/cmsis_gcc.h ****   uint32_t result;
+ 288:../CMSIS/cmsis_gcc.h **** 
+ 289:../CMSIS/cmsis_gcc.h ****   __ASM volatile ("MRS %0, faultmask" : "=r" (result) );
+ 290:../CMSIS/cmsis_gcc.h ****   return(result);
+ 291:../CMSIS/cmsis_gcc.h **** }
+ 292:../CMSIS/cmsis_gcc.h **** 
+ 293:../CMSIS/cmsis_gcc.h **** 
+ 294:../CMSIS/cmsis_gcc.h **** /**
+ 295:../CMSIS/cmsis_gcc.h ****   \brief   Set Fault Mask
+ 296:../CMSIS/cmsis_gcc.h ****   \details Assigns the given value to the Fault Mask register.
+ 297:../CMSIS/cmsis_gcc.h ****   \param [in]    faultMask  Fault Mask value to set
+ 298:../CMSIS/cmsis_gcc.h ****  */
+ 299:../CMSIS/cmsis_gcc.h **** __attribute__( ( always_inline ) ) __STATIC_INLINE void __set_FAULTMASK(uint32_t faultMask)
+ 300:../CMSIS/cmsis_gcc.h **** {
+ 301:../CMSIS/cmsis_gcc.h ****   __ASM volatile ("MSR faultmask, %0" : : "r" (faultMask) : "memory");
+ 302:../CMSIS/cmsis_gcc.h **** }
+ 303:../CMSIS/cmsis_gcc.h **** 
+ 304:../CMSIS/cmsis_gcc.h **** #endif /* (__CORTEX_M >= 0x03U) */
+ 305:../CMSIS/cmsis_gcc.h **** 
+ 306:../CMSIS/cmsis_gcc.h **** 
+ 307:../CMSIS/cmsis_gcc.h **** #if       (__CORTEX_M == 0x04U) || (__CORTEX_M == 0x07U)
+ 308:../CMSIS/cmsis_gcc.h **** 
+ 309:../CMSIS/cmsis_gcc.h **** /**
+ 310:../CMSIS/cmsis_gcc.h ****   \brief   Get FPSCR
+ 311:../CMSIS/cmsis_gcc.h ****   \details Returns the current value of the Floating Point Status/Control register.
+ 312:../CMSIS/cmsis_gcc.h ****   \return               Floating Point Status/Control register value
+ 313:../CMSIS/cmsis_gcc.h ****  */
+ 314:../CMSIS/cmsis_gcc.h **** __attribute__( ( always_inline ) ) __STATIC_INLINE uint32_t __get_FPSCR(void)
+ 315:../CMSIS/cmsis_gcc.h **** {
+ 316:../CMSIS/cmsis_gcc.h **** #if (__FPU_PRESENT == 1U) && (__FPU_USED == 1U)
+ 317:../CMSIS/cmsis_gcc.h ****   uint32_t result;
+ 318:../CMSIS/cmsis_gcc.h **** 
+ 319:../CMSIS/cmsis_gcc.h ****   /* Empty asm statement works as a scheduling barrier */
+ 320:../CMSIS/cmsis_gcc.h ****   __ASM volatile ("");
+ 321:../CMSIS/cmsis_gcc.h ****   __ASM volatile ("VMRS %0, fpscr" : "=r" (result) );
+ 322:../CMSIS/cmsis_gcc.h ****   __ASM volatile ("");
+ 323:../CMSIS/cmsis_gcc.h ****   return(result);
+ 324:../CMSIS/cmsis_gcc.h **** #else
+ 325:../CMSIS/cmsis_gcc.h ****    return(0);
+ 326:../CMSIS/cmsis_gcc.h **** #endif
+ 327:../CMSIS/cmsis_gcc.h **** }
+ 328:../CMSIS/cmsis_gcc.h **** 
+ 329:../CMSIS/cmsis_gcc.h **** 
+ 330:../CMSIS/cmsis_gcc.h **** /**
+ 331:../CMSIS/cmsis_gcc.h ****   \brief   Set FPSCR
+ 332:../CMSIS/cmsis_gcc.h ****   \details Assigns the given value to the Floating Point Status/Control register.
+ 333:../CMSIS/cmsis_gcc.h ****   \param [in]    fpscr  Floating Point Status/Control value to set
+ 334:../CMSIS/cmsis_gcc.h ****  */
+ 335:../CMSIS/cmsis_gcc.h **** __attribute__( ( always_inline ) ) __STATIC_INLINE void __set_FPSCR(uint32_t fpscr)
+ 336:../CMSIS/cmsis_gcc.h **** {
+ 337:../CMSIS/cmsis_gcc.h **** #if (__FPU_PRESENT == 1U) && (__FPU_USED == 1U)
+ 338:../CMSIS/cmsis_gcc.h ****   /* Empty asm statement works as a scheduling barrier */
+ 339:../CMSIS/cmsis_gcc.h ****   __ASM volatile ("");
+ 340:../CMSIS/cmsis_gcc.h ****   __ASM volatile ("VMSR fpscr, %0" : : "r" (fpscr) : "vfpcc");
+ 341:../CMSIS/cmsis_gcc.h ****   __ASM volatile ("");
+ARM GAS  /tmp/ccRfp5Zy.s 			page 20
+
+
+ 342:../CMSIS/cmsis_gcc.h **** #endif
+ 343:../CMSIS/cmsis_gcc.h **** }
+ 344:../CMSIS/cmsis_gcc.h **** 
+ 345:../CMSIS/cmsis_gcc.h **** #endif /* (__CORTEX_M == 0x04U) || (__CORTEX_M == 0x07U) */
+ 346:../CMSIS/cmsis_gcc.h **** 
+ 347:../CMSIS/cmsis_gcc.h **** 
+ 348:../CMSIS/cmsis_gcc.h **** 
+ 349:../CMSIS/cmsis_gcc.h **** /*@} end of CMSIS_Core_RegAccFunctions */
+ 350:../CMSIS/cmsis_gcc.h **** 
+ 351:../CMSIS/cmsis_gcc.h **** 
+ 352:../CMSIS/cmsis_gcc.h **** /* ##########################  Core Instruction Access  ######################### */
+ 353:../CMSIS/cmsis_gcc.h **** /** \defgroup CMSIS_Core_InstructionInterface CMSIS Core Instruction Interface
+ 354:../CMSIS/cmsis_gcc.h ****   Access to dedicated instructions
+ 355:../CMSIS/cmsis_gcc.h ****   @{
+ 356:../CMSIS/cmsis_gcc.h **** */
+ 357:../CMSIS/cmsis_gcc.h **** 
+ 358:../CMSIS/cmsis_gcc.h **** /* Define macros for porting to both thumb1 and thumb2.
+ 359:../CMSIS/cmsis_gcc.h ****  * For thumb1, use low register (r0-r7), specified by constraint "l"
+ 360:../CMSIS/cmsis_gcc.h ****  * Otherwise, use general registers, specified by constraint "r" */
+ 361:../CMSIS/cmsis_gcc.h **** #if defined (__thumb__) && !defined (__thumb2__)
+ 362:../CMSIS/cmsis_gcc.h **** #define __CMSIS_GCC_OUT_REG(r) "=l" (r)
+ 363:../CMSIS/cmsis_gcc.h **** #define __CMSIS_GCC_USE_REG(r) "l" (r)
+ 364:../CMSIS/cmsis_gcc.h **** #else
+ 365:../CMSIS/cmsis_gcc.h **** #define __CMSIS_GCC_OUT_REG(r) "=r" (r)
+ 366:../CMSIS/cmsis_gcc.h **** #define __CMSIS_GCC_USE_REG(r) "r" (r)
+ 367:../CMSIS/cmsis_gcc.h **** #endif
+ 368:../CMSIS/cmsis_gcc.h **** 
+ 369:../CMSIS/cmsis_gcc.h **** /**
+ 370:../CMSIS/cmsis_gcc.h ****   \brief   No Operation
+ 371:../CMSIS/cmsis_gcc.h ****   \details No Operation does nothing. This instruction can be used for code alignment purposes.
+ 372:../CMSIS/cmsis_gcc.h ****  */
+ 373:../CMSIS/cmsis_gcc.h **** __attribute__((always_inline)) __STATIC_INLINE void __NOP(void)
+ 374:../CMSIS/cmsis_gcc.h **** {
+ 375:../CMSIS/cmsis_gcc.h ****   __ASM volatile ("nop");
+ 376:../CMSIS/cmsis_gcc.h **** }
+ 377:../CMSIS/cmsis_gcc.h **** 
+ 378:../CMSIS/cmsis_gcc.h **** 
+ 379:../CMSIS/cmsis_gcc.h **** /**
+ 380:../CMSIS/cmsis_gcc.h ****   \brief   Wait For Interrupt
+ 381:../CMSIS/cmsis_gcc.h ****   \details Wait For Interrupt is a hint instruction that suspends execution until one of a number o
+ 382:../CMSIS/cmsis_gcc.h ****  */
+ 383:../CMSIS/cmsis_gcc.h **** __attribute__((always_inline)) __STATIC_INLINE void __WFI(void)
+ 384:../CMSIS/cmsis_gcc.h **** {
+ 385:../CMSIS/cmsis_gcc.h ****   __ASM volatile ("wfi");
+ 530              		.loc 4 385 0
+ 531              		.syntax divided
+ 532              	@ 385 "../CMSIS/cmsis_gcc.h" 1
+ 533 0078 30BF     		wfi
+ 534              	@ 0 "" 2
+ 535              		.thumb
+ 536              		.syntax unified
+ 537 007a E9E7     		b	.L30
+ 538              	.L32:
+ 539              		.align	2
+ 540              	.L31:
+ 541 007c 00100240 		.word	1073876992
+ 542 0080 00080048 		.word	1207961600
+ARM GAS  /tmp/ccRfp5Zy.s 			page 21
+
+
+ 543 0084 00000000 		.word	.LANCHOR1
+ 544 0088 00000000 		.word	.LANCHOR2
+ 545              	.LBE209:
+ 546              	.LBE208:
+ 547              	.LBE191:
+ 548              		.cfi_endproc
+ 549              	.LFE1873:
+ 551              		.section	.text.startup.main,"ax",%progbits
+ 552              		.align	1
+ 553              		.global	main
+ 554              		.syntax unified
+ 555              		.code	16
+ 556              		.thumb_func
+ 557              		.fpu softvfp
+ 559              	main:
+ 560              	.LFB1880:
+ 138:06.cpp  **** 
+ 139:06.cpp  ****       // делать в этом цикле пока нечего, потому спим до пр
+ 140:06.cpp  ****       __WFI();
+ 141:06.cpp  ****    }		
+ 142:06.cpp  **** }
+ 143:06.cpp  **** 
+ 144:06.cpp  **** 
+ 145:06.cpp  **** int main(void)
+ 146:06.cpp  **** {
+ 561              		.loc 1 146 0
+ 562              		.cfi_startproc
+ 563              		@ Volatile: function does not return.
+ 564              		@ args = 0, pretend = 0, frame = 0
+ 565              		@ frame_needed = 0, uses_anonymous_args = 0
+ 566 0000 10B5     		push	{r4, lr}
+ 567              	.LCFI3:
+ 568              		.cfi_def_cfa_offset 8
+ 569              		.cfi_offset 4, -8
+ 570              		.cfi_offset 14, -4
+ 147:06.cpp  ****    // process1(); // 1004 байт -0s
+ 148:06.cpp  ****    process2(); // 1056 байт -0s
+ 571              		.loc 1 148 0
+ 572 0002 FFF7FEFF 		bl	_Z8process2v
+ 573              	.LVL25:
+ 574              		.cfi_endproc
+ 575              	.LFE1880:
+ 577              		.section	.text._Z8process1v,"ax",%progbits
+ 578              		.align	1
+ 579              		.global	_Z8process1v
+ 580              		.syntax unified
+ 581              		.code	16
+ 582              		.thumb_func
+ 583              		.fpu softvfp
+ 585              	_Z8process1v:
+ 586              	.LFB1869:
+  94:06.cpp  ****    using BlueLed  = PC8;
+ 587              		.loc 1 94 0
+ 588              		.cfi_startproc
+ 589              		@ Volatile: function does not return.
+ 590              		@ args = 0, pretend = 0, frame = 16
+ 591              		@ frame_needed = 0, uses_anonymous_args = 0
+ARM GAS  /tmp/ccRfp5Zy.s 			page 22
+
+
+ 592              	.LVL26:
+ 593 0000 1FB5     		push	{r0, r1, r2, r3, r4, lr}
+ 594              	.LCFI4:
+ 595              		.cfi_def_cfa_offset 24
+ 596              		.cfi_offset 0, -24
+ 597              		.cfi_offset 1, -20
+ 598              		.cfi_offset 2, -16
+ 599              		.cfi_offset 3, -12
+ 600              		.cfi_offset 4, -8
+ 601              		.cfi_offset 14, -4
+ 602              	.LBB237:
+ 603              	.LBB238:
+  18:pin.h         **** 	}
+ 604              		.loc 3 18 0
+ 605 0002 8023     		movs	r3, #128
+ 606 0004 164A     		ldr	r2, .L37
+ 607 0006 1B03     		lsls	r3, r3, #12
+ 608 0008 5169     		ldr	r1, [r2, #20]
+ 609              	.LBE238:
+ 610              	.LBE237:
+ 611              	.LBB240:
+ 612              	.LBB241:
+ 613              	.LBB242:
+ 614              	.LBB243:
+ 615              	.LBB244:
+  41:06.cpp  ****    void unsubscribe(TickSubscriber* p) { remove(p); }
+ 616              		.loc 1 41 0
+ 617 000a 6846     		mov	r0, sp
+ 618              	.LBE244:
+ 619              	.LBE243:
+ 620              	.LBE242:
+ 621              	.LBE241:
+ 622              	.LBE240:
+ 623              	.LBB258:
+ 624              	.LBB239:
+  18:pin.h         **** 	}
+ 625              		.loc 3 18 0
+ 626 000c 0B43     		orrs	r3, r1
+ 627 000e 5361     		str	r3, [r2, #20]
+ 628              	.LBE239:
+ 629              	.LBE258:
+ 630              	.LBB259:
+ 631              	.LBB260:
+  20:pin.h         **** 	static void set()      { port()->BSRR = 1 << n; }
+ 632              		.loc 3 20 0
+ 633 0010 8022     		movs	r2, #128
+ 634 0012 144B     		ldr	r3, .L37+4
+ 635 0014 5202     		lsls	r2, r2, #9
+ 636 0016 1968     		ldr	r1, [r3]
+ 637 0018 0A43     		orrs	r2, r1
+ 638 001a 1A60     		str	r2, [r3]
+ 639              	.LBE260:
+ 640              	.LBE259:
+ 641              	.LBB261:
+ 642              	.LBB262:
+ 643 001c 8022     		movs	r2, #128
+ 644 001e 1968     		ldr	r1, [r3]
+ARM GAS  /tmp/ccRfp5Zy.s 			page 23
+
+
+ 645 0020 D202     		lsls	r2, r2, #11
+ 646 0022 0A43     		orrs	r2, r1
+ 647 0024 1A60     		str	r2, [r3]
+ 648              	.LBE262:
+ 649              	.LBE261:
+ 650              	.LBB263:
+ 651              	.LBB264:
+  21:pin.h         **** 	static void clear()    { port()->BSRR = 1 << (16 + n); }
+ 652              		.loc 3 21 0
+ 653 0026 8022     		movs	r2, #128
+ 654 0028 5200     		lsls	r2, r2, #1
+ 655 002a 9A61     		str	r2, [r3, #24]
+ 656              	.LBE264:
+ 657              	.LBE263:
+ 658              	.LBB265:
+ 659              	.LBB266:
+  22:pin.h         ****    static bool isSet()    { return (port()->IDR & (1 << n)) != 0;  }
+ 660              		.loc 3 22 0
+ 661 002c 8022     		movs	r2, #128
+ 662 002e 9204     		lsls	r2, r2, #18
+ 663 0030 9A61     		str	r2, [r3, #24]
+ 664              	.LVL27:
+ 665              	.LBE266:
+ 666              	.LBE265:
+ 667              	.LBB267:
+ 668              	.LBB257:
+ 669              	.LBB256:
+ 670              	.LBB246:
+ 671              	.LBB247:
+ 672              	.LBB248:
+   6:list.h        ****    T* prev {nullptr};
+ 673              		.loc 2 6 0
+ 674 0032 0023     		movs	r3, #0
+ 675              	.LBE248:
+ 676              	.LBE247:
+ 677              	.LBE246:
+  78:06.cpp  ****    void operator ()(void(function)())
+ 678              		.loc 1 78 0
+ 679 0034 0C4A     		ldr	r2, .L37+8
+ 680              	.LBB253:
+ 681              	.LBB251:
+ 682              	.LBB249:
+   6:list.h        ****    T* prev {nullptr};
+ 683              		.loc 2 6 0
+ 684 0036 0193     		str	r3, [sp, #4]
+ 685              	.LBE249:
+ 686              	.LBE251:
+ 687              	.LBE253:
+  78:06.cpp  ****    void operator ()(void(function)())
+ 688              		.loc 1 78 0
+ 689 0038 0832     		adds	r2, r2, #8
+ 690              	.LBB254:
+ 691              	.LBB252:
+ 692              	.LBB250:
+   6:list.h        ****    T* prev {nullptr};
+ 693              		.loc 2 6 0
+ 694 003a 0293     		str	r3, [sp, #8]
+ARM GAS  /tmp/ccRfp5Zy.s 			page 24
+
+
+ 695              	.LVL28:
+ 696              	.LBE250:
+ 697              	.LBE252:
+ 698              	.LBE254:
+  78:06.cpp  ****    void operator ()(void(function)())
+ 699              		.loc 1 78 0
+ 700 003c 0092     		str	r2, [sp]
+ 701 003e 0393     		str	r3, [sp, #12]
+ 702              	.LVL29:
+ 703              	.LBB255:
+ 704              	.LBB245:
+  41:06.cpp  ****    void unsubscribe(TickSubscriber* p) { remove(p); }
+ 705              		.loc 1 41 0
+ 706 0040 FFF7FEFF 		bl	_ZN4ListIN12_GLOBAL__N_114TickSubscriberEE9push_backEPS1_.constprop.8
+ 707              	.LVL30:
+ 708              	.L36:
+ 709              	.LBE245:
+ 710              	.LBE255:
+ 711              	.LBE256:
+ 712              	.LBE257:
+ 713              	.LBE267:
+ 714              	.LBB268:
+ 715              	.LBB269:
+ 716              	.LBB270:
+  81:06.cpp  ****          function(); // выполняем функцию
+ 717              		.loc 1 81 0 discriminator 1
+ 718 0044 039B     		ldr	r3, [sp, #12]
+ 719 0046 642B     		cmp	r3, #100
+ 720 0048 03D1     		bne	.L35
+ 721              	.LVL31:
+ 722              	.LBB271:
+ 723              	.LBB272:
+ 724              	.LBB273:
+ 110:06.cpp  ****          GreenLed::toggle();				
+ 725              		.loc 1 110 0
+ 726 004a FFF7FEFF 		bl	_ZN3PinILm1207961600ELi8EE6toggleEv
+ 727              	.LVL32:
+ 111:06.cpp  ****       });
+ 728              		.loc 1 111 0
+ 729 004e FFF7FEFF 		bl	_ZN3PinILm1207961600ELi9EE6toggleEv
+ 730              	.LVL33:
+ 731              	.L35:
+ 732              	.LBE273:
+ 733              	.LBE272:
+ 734              	.LBE271:
+  83:06.cpp  ****    }
+ 735              		.loc 1 83 0
+ 736 0052 0398     		ldr	r0, [sp, #12]
+ 737 0054 6421     		movs	r1, #100
+ 738 0056 FFF7FEFF 		bl	__aeabi_uidivmod
+ 739              	.LVL34:
+ 740 005a 0391     		str	r1, [sp, #12]
+ 741              	.LBE270:
+ 742              	.LBE269:
+ 743              	.LBB274:
+ 744              	.LBB275:
+ 745              		.loc 4 385 0
+ARM GAS  /tmp/ccRfp5Zy.s 			page 25
+
+
+ 746              		.syntax divided
+ 747              	@ 385 "../CMSIS/cmsis_gcc.h" 1
+ 748 005c 30BF     		wfi
+ 749              	@ 0 "" 2
+ 750              		.thumb
+ 751              		.syntax unified
+ 752 005e F1E7     		b	.L36
+ 753              	.L38:
+ 754              		.align	2
+ 755              	.L37:
+ 756 0060 00100240 		.word	1073876992
+ 757 0064 00080048 		.word	1207961600
+ 758 0068 00000000 		.word	.LANCHOR3
+ 759              	.LBE275:
+ 760              	.LBE274:
+ 761              	.LBE268:
+ 762              		.cfi_endproc
+ 763              	.LFE1869:
+ 765              		.section	.text.startup._GLOBAL__sub_I_SysTick_Handler,"ax",%progbits
+ 766              		.align	1
+ 767              		.syntax unified
+ 768              		.code	16
+ 769              		.thumb_func
+ 770              		.fpu softvfp
+ 772              	_GLOBAL__sub_I_SysTick_Handler:
+ 773              	.LFB2405:
+ 149:06.cpp  **** }
+ 774              		.loc 1 149 0
+ 775              		.cfi_startproc
+ 776              		@ args = 0, pretend = 0, frame = 0
+ 777              		@ frame_needed = 0, uses_anonymous_args = 0
+ 778              		@ link register save eliminated.
+ 779              	.LVL35:
+ 780              	.LBB285:
+ 781              	.LBB286:
+ 782              	.LBB287:
+ 783              	.LBB288:
+ 784              	.LBB289:
+ 785              	.LBB290:
+  14:list.h        **** {
+ 786              		.loc 2 14 0
+ 787 0000 0022     		movs	r2, #0
+ 788 0002 074B     		ldr	r3, .L40
+ 789              	.LBE290:
+ 790              	.LBE289:
+ 791              	.LBE288:
+ 792              	.LBE287:
+ 793              	.LBE286:
+ 794              	.LBE285:
+ 795              		.loc 1 149 0
+ 796              		@ sp needed
+ 797              	.LBB298:
+ 798              	.LBB297:
+ 799              	.LBB296:
+ 800              	.LBB295:
+ 801              	.LBB292:
+ 802              	.LBB291:
+ARM GAS  /tmp/ccRfp5Zy.s 			page 26
+
+
+  14:list.h        **** {
+ 803              		.loc 2 14 0
+ 804 0004 1A60     		str	r2, [r3]
+ 805 0006 5A60     		str	r2, [r3, #4]
+ 806              	.LVL36:
+ 807              	.LBE291:
+ 808              	.LBE292:
+ 809              	.LBB293:
+ 810              	.LBB294:
+  20:06.cpp  ****    SysTick->VAL  = val;                        // Обнуляем таймеры и флаги 
+ 811              		.loc 1 20 0
+ 812 0008 064B     		ldr	r3, .L40+4
+ 813 000a 074A     		ldr	r2, .L40+8
+ 814 000c 5A60     		str	r2, [r3, #4]
+  21:06.cpp  ****    SysTick->CTRL = SysTick_CTRL_CLKSOURCE_Msk  // processor clock
+ 815              		.loc 1 21 0
+ 816 000e 9A60     		str	r2, [r3, #8]
+  22:06.cpp  ****                  | SysTick_CTRL_TICKINT_Msk;   // разрешение прерывания
+ 817              		.loc 1 22 0
+ 818 0010 0622     		movs	r2, #6
+ 819 0012 1A60     		str	r2, [r3]
+  24:06.cpp  **** }
+ 820              		.loc 1 24 0
+ 821 0014 1968     		ldr	r1, [r3]
+ 822 0016 053A     		subs	r2, r2, #5
+ 823 0018 0A43     		orrs	r2, r1
+ 824 001a 1A60     		str	r2, [r3]
+ 825              	.LVL37:
+ 826              	.LBE294:
+ 827              	.LBE293:
+ 828              	.LBE295:
+ 829              	.LBE296:
+ 830              	.LBE297:
+ 831              	.LBE298:
+ 832              		.loc 1 149 0
+ 833 001c 7047     		bx	lr
+ 834              	.L41:
+ 835 001e C046     		.align	2
+ 836              	.L40:
+ 837 0020 00000000 		.word	.LANCHOR0
+ 838 0024 10E000E0 		.word	-536813552
+ 839 0028 3F1F0000 		.word	7999
+ 840              		.cfi_endproc
+ 841              	.LFE2405:
+ 843              		.section	.init_array,"aw",%init_array
+ 844              		.align	2
+ 845 0000 00000000 		.word	_GLOBAL__sub_I_SysTick_Handler(target1)
+ 846              		.section	.bss._ZN12_GLOBAL__N_111tickUpdaterE,"aw",%nobits
+ 847              		.align	2
+ 848              		.set	.LANCHOR0,. + 0
+ 851              	_ZN12_GLOBAL__N_111tickUpdaterE:
+ 852 0000 00000000 		.space	8
+ 852      00000000 
+ 853              		.section	.rodata._ZTVN12_GLOBAL__N_110CyclicTaskILj100EEE,"a",%progbits
+ 854              		.align	2
+ 855              		.set	.LANCHOR3,. + 0
+ 858              	_ZTVN12_GLOBAL__N_110CyclicTaskILj100EEE:
+ARM GAS  /tmp/ccRfp5Zy.s 			page 27
+
+
+ 859 0000 00000000 		.word	0
+ 860 0004 00000000 		.word	0
+ 861 0008 00000000 		.word	_ZN12_GLOBAL__N_110CyclicTaskILj100EE4tickEv
+ 862              		.section	.rodata._ZTVN12_GLOBAL__N_110CyclicTaskILj200EEE,"a",%progbits
+ 863              		.align	2
+ 864              		.set	.LANCHOR1,. + 0
+ 867              	_ZTVN12_GLOBAL__N_110CyclicTaskILj200EEE:
+ 868 0000 00000000 		.word	0
+ 869 0004 00000000 		.word	0
+ 870 0008 00000000 		.word	_ZN12_GLOBAL__N_110CyclicTaskILj200EE4tickEv
+ 871              		.section	.rodata._ZTVN12_GLOBAL__N_110CyclicTaskILj300EEE,"a",%progbits
+ 872              		.align	2
+ 873              		.set	.LANCHOR2,. + 0
+ 876              	_ZTVN12_GLOBAL__N_110CyclicTaskILj300EEE:
+ 877 0000 00000000 		.word	0
+ 878 0004 00000000 		.word	0
+ 879 0008 00000000 		.word	_ZN12_GLOBAL__N_110CyclicTaskILj300EE4tickEv
+ 880              		.text
+ 881              	.Letext0:
+ 882              		.file 5 "/home/users/dvk/code/gcc-arm-none-eabi-7-2018-q2-update/arm-none-eabi/include/machine/_de
+ 883              		.file 6 "/home/users/dvk/code/gcc-arm-none-eabi-7-2018-q2-update/arm-none-eabi/include/sys/_stdint
+ 884              		.file 7 "/home/users/dvk/code/gcc-arm-none-eabi-7-2018-q2-update/arm-none-eabi/include/stdint.h"
+ 885              		.file 8 "../CMSIS/core_cm0.h"
+ 886              		.file 9 "../CMSIS/stm32f030x6.h"
+ 887              		.file 10 "/home/users/dvk/code/gcc-arm-none-eabi-7-2018-q2-update/arm-none-eabi/include/c++/7.3.1/
+ 888              		.file 11 "/home/users/dvk/code/gcc-arm-none-eabi-7-2018-q2-update/arm-none-eabi/include/c++/7.3.1/
+ 889              		.file 12 "/home/users/dvk/code/gcc-arm-none-eabi-7-2018-q2-update/arm-none-eabi/include/c++/7.3.1/
+ 890              		.file 13 "/home/users/dvk/code/gcc-arm-none-eabi-7-2018-q2-update/arm-none-eabi/include/c++/7.3.1/
+ 891              		.file 14 "/home/users/dvk/code/gcc-arm-none-eabi-7-2018-q2-update/arm-none-eabi/include/c++/7.3.1/
+ 892              		.file 15 "/home/users/dvk/code/gcc-arm-none-eabi-7-2018-q2-update/arm-none-eabi/include/c++/7.3.1/
+ 893              		.file 16 "/home/users/dvk/code/gcc-arm-none-eabi-7-2018-q2-update/arm-none-eabi/include/c++/7.3.1/
+ 894              		.file 17 "/home/users/dvk/code/gcc-arm-none-eabi-7-2018-q2-update/arm-none-eabi/include/c++/7.3.1/
+ 895              		.file 18 "/home/users/dvk/code/gcc-arm-none-eabi-7-2018-q2-update/arm-none-eabi/include/c++/7.3.1/
+ 896              		.file 19 "/home/users/dvk/code/gcc-arm-none-eabi-7-2018-q2-update/arm-none-eabi/include/c++/7.3.1/
+ 897              		.file 20 "/home/users/dvk/code/gcc-arm-none-eabi-7-2018-q2-update/arm-none-eabi/include/c++/7.3.1/
+ 898              		.file 21 "/home/users/dvk/code/gcc-arm-none-eabi-7-2018-q2-update/arm-none-eabi/include/c++/7.3.1/
+ 899              		.file 22 "/home/users/dvk/code/gcc-arm-none-eabi-7-2018-q2-update/arm-none-eabi/include/c++/7.3.1/
+ 900              		.file 23 "/home/users/dvk/code/gcc-arm-none-eabi-7-2018-q2-update/arm-none-eabi/include/c++/7.3.1/
+ 901              		.file 24 "/home/users/dvk/code/gcc-arm-none-eabi-7-2018-q2-update/arm-none-eabi/include/c++/7.3.1/
+ 902              		.file 25 "/home/users/dvk/code/gcc-arm-none-eabi-7-2018-q2-update/arm-none-eabi/include/c++/7.3.1/
+ 903              		.file 26 "/home/users/dvk/code/gcc-arm-none-eabi-7-2018-q2-update/arm-none-eabi/include/c++/7.3.1/
+ 904              		.file 27 "/home/users/dvk/code/gcc-arm-none-eabi-7-2018-q2-update/arm-none-eabi/include/c++/7.3.1/
+ 905              		.file 28 "/home/users/dvk/code/gcc-arm-none-eabi-7-2018-q2-update/arm-none-eabi/include/c++/7.3.1/
+ 906              		.file 29 "/home/users/dvk/code/gcc-arm-none-eabi-7-2018-q2-update/arm-none-eabi/include/c++/7.3.1/
+ 907              		.file 30 "/home/users/dvk/code/gcc-arm-none-eabi-7-2018-q2-update/arm-none-eabi/include/c++/7.3.1/
+ 908              		.file 31 "/home/users/dvk/code/gcc-arm-none-eabi-7-2018-q2-update/arm-none-eabi/include/c++/7.3.1/
+ 909              		.file 32 "/home/users/dvk/code/gcc-arm-none-eabi-7-2018-q2-update/lib/gcc/arm-none-eabi/7.3.1/incl
+ 910              		.file 33 "/home/users/dvk/code/gcc-arm-none-eabi-7-2018-q2-update/arm-none-eabi/include/sys/lock.h
+ 911              		.file 34 "/home/users/dvk/code/gcc-arm-none-eabi-7-2018-q2-update/arm-none-eabi/include/sys/_types
+ 912              		.file 35 "/home/users/dvk/code/gcc-arm-none-eabi-7-2018-q2-update/arm-none-eabi/include/sys/reent.
+ 913              		.file 36 "/home/users/dvk/code/gcc-arm-none-eabi-7-2018-q2-update/lib/gcc/arm-none-eabi/7.3.1/incl
+ 914              		.file 37 "<built-in>"
+ 915              		.file 38 "/home/users/dvk/code/gcc-arm-none-eabi-7-2018-q2-update/arm-none-eabi/include/wchar.h"
+ 916              		.file 39 "/home/users/dvk/code/gcc-arm-none-eabi-7-2018-q2-update/arm-none-eabi/include/locale.h"
+ 917              		.file 40 "/home/users/dvk/code/gcc-arm-none-eabi-7-2018-q2-update/arm-none-eabi/include/ctype.h"
+ 918              		.file 41 "/home/users/dvk/code/gcc-arm-none-eabi-7-2018-q2-update/arm-none-eabi/include/stdlib.h"
+ 919              		.file 42 "/home/users/dvk/code/gcc-arm-none-eabi-7-2018-q2-update/arm-none-eabi/include/stdio.h"
+ARM GAS  /tmp/ccRfp5Zy.s 			page 28
+
+
+ 920              		.file 43 "/home/users/dvk/code/gcc-arm-none-eabi-7-2018-q2-update/arm-none-eabi/include/sys/errno.
+ 921              		.file 44 "/home/users/dvk/code/gcc-arm-none-eabi-7-2018-q2-update/arm-none-eabi/include/wctype.h"
+ARM GAS  /tmp/ccRfp5Zy.s 			page 29
+
+
+DEFINED SYMBOLS
+                            *ABS*:0000000000000000 06.cpp
+     /tmp/ccRfp5Zy.s:16     .text._ZN12_GLOBAL__N_110CyclicTaskILj300EE4tickEv:0000000000000000 $t
+     /tmp/ccRfp5Zy.s:22     .text._ZN12_GLOBAL__N_110CyclicTaskILj300EE4tickEv:0000000000000000 _ZN12_GLOBAL__N_110CyclicTaskILj300EE4tickEv
+     /tmp/ccRfp5Zy.s:41     .text._ZN12_GLOBAL__N_110CyclicTaskILj200EE4tickEv:0000000000000000 $t
+     /tmp/ccRfp5Zy.s:47     .text._ZN12_GLOBAL__N_110CyclicTaskILj200EE4tickEv:0000000000000000 _ZN12_GLOBAL__N_110CyclicTaskILj200EE4tickEv
+     /tmp/ccRfp5Zy.s:65     .text._ZN12_GLOBAL__N_110CyclicTaskILj100EE4tickEv:0000000000000000 $t
+     /tmp/ccRfp5Zy.s:71     .text._ZN12_GLOBAL__N_110CyclicTaskILj100EE4tickEv:0000000000000000 _ZN12_GLOBAL__N_110CyclicTaskILj100EE4tickEv
+     /tmp/ccRfp5Zy.s:89     .text._ZN4ListIN12_GLOBAL__N_114TickSubscriberEE9push_backEPS1_.constprop.8:0000000000000000 $t
+     /tmp/ccRfp5Zy.s:95     .text._ZN4ListIN12_GLOBAL__N_114TickSubscriberEE9push_backEPS1_.constprop.8:0000000000000000 _ZN4ListIN12_GLOBAL__N_114TickSubscriberEE9push_backEPS1_.constprop.8
+     /tmp/ccRfp5Zy.s:130    .text._ZN4ListIN12_GLOBAL__N_114TickSubscriberEE9push_backEPS1_.constprop.8:0000000000000018 $d
+     /tmp/ccRfp5Zy.s:135    .text.SysTick_Handler:0000000000000000 $t
+     /tmp/ccRfp5Zy.s:142    .text.SysTick_Handler:0000000000000000 SysTick_Handler
+     /tmp/ccRfp5Zy.s:185    .text.SysTick_Handler:0000000000000018 $d
+     /tmp/ccRfp5Zy.s:190    .text._ZN3PinILm1207961600ELi8EE6toggleEv:0000000000000000 $t
+     /tmp/ccRfp5Zy.s:197    .text._ZN3PinILm1207961600ELi8EE6toggleEv:0000000000000000 _ZN3PinILm1207961600ELi8EE6toggleEv
+     /tmp/ccRfp5Zy.s:237    .text._ZN3PinILm1207961600ELi8EE6toggleEv:0000000000000014 $d
+     /tmp/ccRfp5Zy.s:242    .text._ZN3PinILm1207961600ELi9EE6toggleEv:0000000000000000 $t
+     /tmp/ccRfp5Zy.s:249    .text._ZN3PinILm1207961600ELi9EE6toggleEv:0000000000000000 _ZN3PinILm1207961600ELi9EE6toggleEv
+     /tmp/ccRfp5Zy.s:288    .text._ZN3PinILm1207961600ELi9EE6toggleEv:0000000000000014 $d
+     /tmp/ccRfp5Zy.s:294    .text._Z8process2v:0000000000000000 $t
+     /tmp/ccRfp5Zy.s:301    .text._Z8process2v:0000000000000000 _Z8process2v
+     /tmp/ccRfp5Zy.s:541    .text._Z8process2v:000000000000007c $d
+     /tmp/ccRfp5Zy.s:552    .text.startup.main:0000000000000000 $t
+     /tmp/ccRfp5Zy.s:559    .text.startup.main:0000000000000000 main
+     /tmp/ccRfp5Zy.s:578    .text._Z8process1v:0000000000000000 $t
+     /tmp/ccRfp5Zy.s:585    .text._Z8process1v:0000000000000000 _Z8process1v
+     /tmp/ccRfp5Zy.s:756    .text._Z8process1v:0000000000000060 $d
+     /tmp/ccRfp5Zy.s:766    .text.startup._GLOBAL__sub_I_SysTick_Handler:0000000000000000 $t
+     /tmp/ccRfp5Zy.s:772    .text.startup._GLOBAL__sub_I_SysTick_Handler:0000000000000000 _GLOBAL__sub_I_SysTick_Handler
+     /tmp/ccRfp5Zy.s:837    .text.startup._GLOBAL__sub_I_SysTick_Handler:0000000000000020 $d
+     /tmp/ccRfp5Zy.s:844    .init_array:0000000000000000 $d
+     /tmp/ccRfp5Zy.s:847    .bss._ZN12_GLOBAL__N_111tickUpdaterE:0000000000000000 $d
+     /tmp/ccRfp5Zy.s:851    .bss._ZN12_GLOBAL__N_111tickUpdaterE:0000000000000000 _ZN12_GLOBAL__N_111tickUpdaterE
+     /tmp/ccRfp5Zy.s:854    .rodata._ZTVN12_GLOBAL__N_110CyclicTaskILj100EEE:0000000000000000 $d
+     /tmp/ccRfp5Zy.s:858    .rodata._ZTVN12_GLOBAL__N_110CyclicTaskILj100EEE:0000000000000000 _ZTVN12_GLOBAL__N_110CyclicTaskILj100EEE
+     /tmp/ccRfp5Zy.s:863    .rodata._ZTVN12_GLOBAL__N_110CyclicTaskILj200EEE:0000000000000000 $d
+     /tmp/ccRfp5Zy.s:867    .rodata._ZTVN12_GLOBAL__N_110CyclicTaskILj200EEE:0000000000000000 _ZTVN12_GLOBAL__N_110CyclicTaskILj200EEE
+     /tmp/ccRfp5Zy.s:872    .rodata._ZTVN12_GLOBAL__N_110CyclicTaskILj300EEE:0000000000000000 $d
+     /tmp/ccRfp5Zy.s:876    .rodata._ZTVN12_GLOBAL__N_110CyclicTaskILj300EEE:0000000000000000 _ZTVN12_GLOBAL__N_110CyclicTaskILj300EEE
+
+UNDEFINED SYMBOLS
+__aeabi_uidivmod
