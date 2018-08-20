@@ -91,7 +91,7 @@ int main()
    std::cout << (test_toogle1()  ? "Pin::toogle1  \033[32mпрошёл\033[0m" : "Pin::toogle1  \033[31mпровален\033[0m") << std::endl;
    std::cout << (test_toogle2()  ? "Pin::toogle2  \033[32mпрошёл\033[0m" : "Pin::toogle2  \033[31mпровален\033[0m") << std::endl;
    std::cout << (test_bad()      ? "Pin::bad      \033[32mпрошёл\033[0m" : "Pin::bad      \033[31mпровален\033[0m") << std::endl;
-
+   std::cout << std::endl;
 }
 
 // в основном Makefile добавил цель test_, которая просто запускает основную цель
