@@ -128,6 +128,55 @@
 			"MIMode": "gdb",
 			"cwd": "${workspaceRoot}"
 		},
+		{ 
+			"name": "09",
+			"type": "cppdbg",
+			"request": "launch",
+         "miDebuggerPath": "arm-none-eabi-gdb",
+         "program": "${workspaceRoot}/09_timer_test/build/main.elf",
+			"miDebuggerServerAddress": "localhost:4242",
+			"MIMode": "gdb",
+			"cwd": "${workspaceRoot}"
+		},
+		{ 
+			"name": "10",
+			"type": "cppdbg",
+			"request": "launch",
+         "miDebuggerPath": "arm-none-eabi-gdb",
+         "program": "${workspaceRoot}/10_lambda/build/main.elf",
+			"miDebuggerServerAddress": "localhost:4242",
+			"MIMode": "gdb",
+			"cwd": "${workspaceRoot}"
+		},
+		{ 
+			"name": "11",
+			"type": "cppdbg",
+			"request": "launch",
+         "miDebuggerPath": "arm-none-eabi-gdb",
+         "program": "${workspaceRoot}/11_TDD_button/build/main.elf",
+			"miDebuggerServerAddress": "localhost:4242",
+			"MIMode": "gdb",
+			"cwd": "${workspaceRoot}"
+		},
+		{
+			"name": "12_test",
+			"type": "cppdbg",
+			"request": "launch",
+			"program": "${workspaceFolder}/12_button/test/a.out",
+			"args": [],
+			"stopAtEntry": false,
+			"cwd": "${workspaceFolder}",
+			"environment": [],
+			"externalConsole": true,
+			"MIMode": "gdb",
+			"setupCommands": [
+				 {
+					  "description": "Enable pretty-printing for gdb",
+					  "text": "-enable-pretty-printing",
+					  "ignoreFailures": true
+				 }
+			]
+		},
 		{
 			"name": "root",
 			"type": "cppdbg",
