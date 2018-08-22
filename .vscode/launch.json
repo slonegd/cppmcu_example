@@ -165,7 +165,6 @@
          "miDebuggerPath": "arm-none-eabi-gdb",
          "program": "${workspaceRoot}/12_button/build/main.elf",
 			"miDebuggerServerAddress": "localhost:4242",
-			"MIMode": "gdb",
 			"cwd": "${workspaceRoot}"
 		},
 		{ 
