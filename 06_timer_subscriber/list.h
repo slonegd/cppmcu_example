@@ -32,13 +32,17 @@ public:
 
    void remove (T* pobj)
    {
-      if (pobj->prev and pobj->next) {
+      if (pobj->prev and pobj->next) {    // если в серединке
          pobj->prev->next = pobj->next;
          pobj->next->prev = pobj->prev;
-      } else if (pobj->next) {
-         first = pobj->next->prev;
-      } else if (pobj->prev) {
-         last = pobj->prev->next;
+      } else if (pobj->next) {            // если первый
+         first = pobj->next;
+         first->prev = nullptr;
+         if (not first) last = nullptr;
+      } else if (pobj->prev) {            // если последний
+         last = pobj->prev;
+         last->next = nullptr;
+         if (not last) first = nullptr;
       }
       pobj->prev = nullptr;
       pobj->next = nullptr;

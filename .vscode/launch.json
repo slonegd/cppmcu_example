@@ -177,6 +177,27 @@
 			"MIMode": "gdb",
 			"cwd": "${workspaceRoot}"
 		},
+		{ 
+			"name": "14",
+			"type": "cppdbg",
+			"request": "launch",
+         "miDebuggerPath": "arm-none-eabi-gdb",
+         "program": "${workspaceRoot}/14_meta/build/main.elf",
+			"miDebuggerServerAddress": "localhost:4242",
+			"MIMode": "gdb",
+			"cwd": "${workspaceRoot}"
+		},
+		{ 
+			"name": "15",
+			"type": "cppdbg",
+			"request": "launch",
+         "miDebuggerPath": "arm-none-eabi-gdb",
+         "program": "${workspaceRoot}/15_registers/build/main.elf",
+			"miDebuggerServerAddress": "localhost:4242",
+			"MIMode": "gdb",
+			"cwd": "${workspaceRoot}"
+		},
+
 		{
 			"name": "root",
 			"type": "cppdbg",

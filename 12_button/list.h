@@ -58,13 +58,17 @@ void List<T>::push_front (T* p)
 template<class T>
 void List<T>::remove (T* p)
 {
-   if (p->prev and p->next) {
+   if (p->prev and p->next) {       // если в серединке
       p->prev->next = p->next;
       p->next->prev = p->prev;
-   } else if (p->next) {
-      first = p->next->prev;
-   } else if (p->prev) {
-      last = p->prev->next;
+   } else if (p->next) {            // если первый
+      first = p->next;
+      first->prev = nullptr;
+      if (not first) last = nullptr;
+   } else if (p->prev) {            // если последний
+      last = p->prev;
+      last->next = nullptr;
+      if (not last) first = nullptr;
    }
    p->prev = nullptr;
    p->next = nullptr;

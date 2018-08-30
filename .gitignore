@@ -16,6 +16,8 @@
 13_buttons_variadic/test/a.out
 14_meta/build/
 14_meta/test/build/
+15_registers/build/
+15_registers/test/build/
 03_polimorphism/a.out
 04_subscriber/a.out
 05_list/a.out
