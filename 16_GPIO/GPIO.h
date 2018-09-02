@@ -296,13 +296,13 @@ void template_GPIO<adr,Pointer>::init()
    // включаем тактировании в инициализации, больше не забудем это сделать
    clockEnable();
 
-   if (c == Input) {
+   if constexpr (c == Input) {
       setMode<n, Mode::Input>();
 
-   } else if (c == Output) {
+   } else if constexpr (c == Output) {
       setMode<n, Mode::Output>();
 
-   } else if  (c == Alternate_1) {
+   } else if constexpr (c == Alternate_1) {
       setMode<n, Mode::Alternate>();
       setAF  <n, AF  ::_1>();
    }
