@@ -13,7 +13,7 @@
 ######################################
 # target
 ######################################
-TARGET_F0 = button
+TARGET_F0 = main
 
 
 ######################################
@@ -22,7 +22,7 @@ TARGET_F0 = button
 # debug build?
 DEBUG = 1
 # optimization
-OPT = -O2
+OPT = -Os
 CPPSTD =-std=c++17
 # Build path
 BUILD_DIR = build
@@ -41,6 +41,7 @@ LDSCRIPT_F0 = $(CMSIS_PATH)/STM32F030K6Tx_FLASH.ld
 C_INCLUDES =  
 C_INCLUDES += -I.
 C_INCLUDES += -I$(CMSIS_PATH)
+C_INCLUDES += -I/usr/include
 
 
 #######################################
@@ -74,7 +75,7 @@ MCU_F0 = $(CPU_F0) -mthumb $(FPU_F0) $(FLOAT-ABI_F0)
 ASFLAGS_F0 = $(MCU_F0) $(OPT) -Wall -fdata-sections -ffunction-sections
 
 CFLAGS_F0  = $(MCU_F0) $(C_DEFS_F0) $(C_INCLUDES) $(C_INCLUDES_F0) $(OPT)
-CFLAGS_F0 += -Wall -Wno-register -fdata-sections -ffunction-sections  -fno-exceptions 
+CFLAGS_F0 += -Wall -Wno-register -fdata-sections -ffunction-sections  -fno-exceptions -fno-strict-volatile-bitfields
 CFLAGS_F0 += -g -gdwarf-2 
 
 
@@ -124,11 +125,8 @@ $(BUILD_DIR)/%.bin: $(BUILD_DIR)/%.elf | $(BUILD_DIR)
 	$(BIN) $< $@	
 	
 $(BUILD_DIR):
-	mkdir $@		
+	mkdir $@
 
-#######################################
-# clean up
-#######################################
 clean:
 	-rm -fR .dep $(BUILD_DIR)
 
@@ -139,6 +137,9 @@ util:
 	st-util
 
 debug: clean all flash_stlink util
+
+test_:
+	$(MAKE) -C ./test/
   
 #######################################
 # dependencies
