@@ -3,9 +3,6 @@
 #include "registr.h"
 #include "stm32f0xx.h"
 
-// используем namespace, поскольку названия регистров повторяются
-// от переферии к переферии
-// регистры описываем по аналогии с SysTick прошлой части
 namespace GPIO {
 
 struct MODER_t {
@@ -94,10 +91,6 @@ struct PUPDR_t {
 };
 
 
-// эта структура немного отличается
-// потому что работа с этим регистром обычно это работа не с битами,
-// но в отладчике надо видеть как установлен каждый бит,
-// поэтому используется объединение
 struct DR_t  { // для IDR ODR
    union {
       uint32_t reg;
@@ -150,7 +143,6 @@ struct AFR_t {
 } // namespace GPIO {
 
 
-// Тип переферии шаблонный, поскольку портов несколько, в отличии ои SysTick
 template<uint32_t adr>
 struct GPIO_t {
    __IO GPIO::MODER_t   MODER;   // mode register,                offset: 0x00
@@ -166,12 +158,8 @@ struct GPIO_t {
    static constexpr uint32_t Base = adr; 
 };
 
-// Данное перечисление отображает все возможные конфигурации пина
-// Сейчас не пишу все, только 2 для примера
 enum class PinMode { Input, Output, Alternate_1 };
 
-// Шаблон методов работы с переферией
-// однострочные методы определяю сразу, многострочные, оставляю на потом
 template<uint32_t adr, class Pointer = Pointer<GPIO_t<adr>>>
 struct template_GPIO {
    using Mode         = GPIO::MODER_t  ::Mode;
@@ -180,19 +168,17 @@ struct template_GPIO {
    using PullResistor = GPIO::PUPDR_t  ::PullResistor;
    using AF           = GPIO::AFR_t    ::AF;
 
-   // метод инициализации, принимает номер пина порта и режим работы пина в виде перечисления
    template<size_t, PinMode> static void init();
 
-   static void clockEnable();
+   // переписываем метод с RCC
+   static void clockEnable() { RCC::template clockEnable<template_GPIO>(); }
 
-   // методы установки конкретных регистров, будут использоваться в init
    // описываю пока не все
    template<size_t, Mode> static void setMode();
    template<size_t, AF>   static void setAF();
 
    template<size_t n> static void set()   { Pointer::get()->BSRR |= (1 << n);          }
    template<size_t n> static void clear() { Pointer::get()->BSRR |= (1 << (n + 16));   }
-   // работаем с регистром по маске (для этого делали объединение)
    template<size_t n> static bool isSet() { return Pointer::get()->IDR.reg & (1 << n); }
 
 
@@ -215,35 +201,8 @@ using PI = template_GPIO<GPIOI_BASE>;
 
 
 
-template<uint32_t adr, class Pointer>
-void template_GPIO<adr,Pointer>::clockEnable()
-{
-   // RCC::clockEnable<template_GPIO<adr,Pointer>>(); // задел на будущее
-   constexpr auto mask =
-      adr == GPIOA_BASE ? RCC_AHBENR_GPIOAEN :
-      adr == GPIOB_BASE ? RCC_AHBENR_GPIOBEN :
-      adr == GPIOC_BASE ? RCC_AHBENR_GPIOCEN :
-      adr == GPIOD_BASE ? RCC_AHBENR_GPIODEN :
-      adr == GPIOF_BASE ? RCC_AHBENR_GPIOFEN : 0;
-   RCC->AHBENR |= mask;
-}
 
 
-// испольуется возможность 17 стандарта - if constexpr
-// она работает только начиная с 7 версии gcc, поэтому стоит обновить компилятор
-// все ветки, которые не проходят условия - убираются из компиляции
-// в результате останется установка только нужного бита
-// чтобы не повторять кучу строк, есть возможности препроцессора
-// https://www.boost.org/doc/libs/1_67_0/libs/preprocessor/doc/ref/local_macro.html
-// но мне не очень нравится игра с препроцессором
-// Хотя, если нало на этапе компиляции просчитать и инициализировать
-// какой-нибудь массив с конст данными, то самое то
-// В старом коде можно увидеть следующие вариации, которые делают тоже самое, но не так явно:
-// 1 полная специализация шаблонной функции
-// 2 частичная специализация структуры, имеющей метод (круглые скобки), который определяет поведение
-// например тут полную специализацию применить сложно, потому что пинов 16 и режимов 4 (итого 64 специализации)
-// поэтому можно применить частичную специализацию дополнительной структуры по пину
-// 3 или же работать с регистром не как с битовым полем, а как с числом (масками)
 template<uint32_t adr, class Pointer>
 template<size_t n, typename template_GPIO<adr,Pointer>::Mode mode>
 void template_GPIO<adr,Pointer>::setMode()
@@ -293,7 +252,6 @@ template<uint32_t adr, class Pointer>
 template<size_t n, PinMode c>
 void template_GPIO<adr,Pointer>::init()
 {
-   // включаем тактировании в инициализации, больше не забудем это сделать
    clockEnable();
 
    if constexpr (c == PinMode::Input) {
@@ -307,8 +265,4 @@ void template_GPIO<adr,Pointer>::init()
       setAF  <n, AF  ::_1>();
    }
 }
-
-// далее надо переписать pin.h
-
-
 

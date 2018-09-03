@@ -23,6 +23,7 @@ struct CR_t {
 };
 
 
+// у меня было готово битовое потле и эти, сейчас они не нужны, но я оставил 
 struct CFGR_t {
    enum PLLdivMCO { PLLdiv1 = 0b0, PLLdiv2 };
    enum PLLmultiplier { _2 = 0b0000, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, _14, _15, _16 };
@@ -118,7 +119,7 @@ struct APB1ENR_t {
 
 
 
-
+// описал не все регистры, можно дописывать по мере необходимости
 struct RCC_t {
   __IO RCC_::CR_t      CR;         // clock control register,                offset: 0x00
   __IO RCC_::CFGR_t    CFGR;       // clock configuration register,          offset: 0x04
@@ -141,6 +142,7 @@ struct RCC_t {
 template<class Pointer = Pointer<RCC_t>>
 struct template_RCC
 {
+   // пока делаю единственный метод
    template<class Periph> static void clockEnable();
 };
 
@@ -149,8 +151,11 @@ struct template_RCC
 #undef RCC
 using RCC = template_RCC<>;
 
-
+// реализация метода должна знать о всей переферии, потому здесь
+// выше не могу, поскольку в GPIO использыется RCC
+// так же делаю include самого RCC в самом верхнем файле defines.h
 #include "GPIO.h"
+
 
 template<class Pointer>
 template<class Periph>
@@ -163,3 +168,4 @@ void template_RCC<Pointer>::clockEnable()
    else if constexpr (std::is_same_v<Periph,PF>) Pointer::get()->AHBENR.IOPFEN = true;
 };
 
+// переписываем метод clockEnable в классе порта с новой сущностью

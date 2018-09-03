@@ -20,6 +20,8 @@
 15_registers/test/build/
 16_GPIO/build/
 16_GPIO/test/build/
+17_RCC/build/
+17_RCC/test/build/
 03_polimorphism/a.out
 04_subscriber/a.out
 05_list/a.out
