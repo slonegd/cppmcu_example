@@ -1,5 +1,8 @@
 01_pin/build/
 02_timer/build/
+03_polimorphism/a.out
+04_subscriber/a.out
+05_list/a.out
 06_timer_subscriber/build/
 07_subscriber_iterators/build/
 08_pin_test/build/
@@ -22,6 +25,6 @@
 16_GPIO/test/build/
 17_RCC/build/
 17_RCC/test/build/
-03_polimorphism/a.out
-04_subscriber/a.out
-05_list/a.out
+18_bitfields/build/
+19_metatable/build/
+19_metatable/test/build/
