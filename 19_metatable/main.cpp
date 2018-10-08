@@ -19,13 +19,12 @@ int main(void)
    GreenLed::init<PinMode::Output>();
    PA0     ::init<PinMode::Input>();
 
-   CyclicTask<200> _200ms;
+   CyclicTask<2> _200ms;
    CyclicTask<300> _300ms;
 
    while(1)
    {
-      _200ms ([](){ BlueLed::toggle();  });
-
+      _200ms ([](){  BlueLed::toggle(); });
       _300ms ([](){ GreenLed::toggle(); });
 
       // делать в этом цикле пока нечего, потому спим до прерывания
