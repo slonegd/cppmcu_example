@@ -19,7 +19,7 @@ int main(void)
    GreenLed::init<PinMode::Output>();
    PA0     ::init<PinMode::Input>();
 
-   CyclicTask<2> _200ms;
+   CyclicTask<200> _200ms;
    CyclicTask<300> _300ms;
 
    while(1)
