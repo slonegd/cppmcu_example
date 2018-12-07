@@ -13,7 +13,7 @@
 ######################################
 # target
 ######################################
-TARGET_F0 = button
+TARGET_F0 = main
 
 
 ######################################
@@ -22,7 +22,7 @@ TARGET_F0 = button
 # debug build?
 DEBUG = 1
 # optimization
-OPT = -O2
+OPT = -Os
 CPPSTD =-std=c++17
 # Build path
 BUILD_DIR = build
@@ -74,7 +74,7 @@ MCU_F0 = $(CPU_F0) -mthumb $(FPU_F0) $(FLOAT-ABI_F0)
 ASFLAGS_F0 = $(MCU_F0) $(OPT) -Wall -fdata-sections -ffunction-sections
 
 CFLAGS_F0  = $(MCU_F0) $(C_DEFS_F0) $(C_INCLUDES) $(C_INCLUDES_F0) $(OPT)
-CFLAGS_F0 += -Wall -Wno-register -fdata-sections -ffunction-sections  -fno-exceptions 
+CFLAGS_F0 += -Wall -Wno-register -fdata-sections -ffunction-sections  -fno-exceptions -fno-strict-volatile-bitfields
 CFLAGS_F0 += -g -gdwarf-2 
 
 
@@ -87,8 +87,8 @@ CFLAGS_F0 += -MMD -MP -MF"$(@:%.o=%.d)" -MT"$(@:%.o=%.d)"
 # libraries
 LIBS = -lc -lm -lnosys
 
-LDFLAGS_F0 = $(MCU_F0) -specs=nano.specs -T$(LDSCRIPT_F0) $(LIBS) -Wl,-Map=$(BUILD_DIR)/$(TARGET_F0).map,--cref -Wl,--gc-sections
-
+LDFLAGS_F0  = $(MCU_F0) -specs=nano.specs -specs=nosys.specs
+LDFLAGS_F0 += -T$(LDSCRIPT_F0) $(LIBS) -Wl,-Map=$(BUILD_DIR)/$(TARGET_F0).map,--cref -Wl,--gc-sections
 
 # default action: build all
 all: clean \
@@ -114,7 +114,7 @@ $(BUILD_DIR)/startup_stm32f030x6.o: $(ASM_SOURCES_F0) Makefile | $(BUILD_DIR)
 	$(AS) -c $(CFLAGS_F0) $< -o $@
 
 $(BUILD_DIR)/$(TARGET_F0).elf: $(OBJECTS_F0) Makefile
-	$(CC) $(OBJECTS_F0) $(LDFLAGS_F0) -o $@
+	$(CPP) $(OBJECTS_F0) $(LDFLAGS_F0) -o $@
 	$(SZ) $@
 
 $(BUILD_DIR)/%.hex: $(BUILD_DIR)/%.elf | $(BUILD_DIR)
@@ -124,11 +124,8 @@ $(BUILD_DIR)/%.bin: $(BUILD_DIR)/%.elf | $(BUILD_DIR)
 	$(BIN) $< $@	
 	
 $(BUILD_DIR):
-	mkdir $@		
+	mkdir $@
 
-#######################################
-# clean up
-#######################################
 clean:
 	-rm -fR .dep $(BUILD_DIR)
 
@@ -139,6 +136,9 @@ util:
 	st-util
 
 debug: clean all flash_stlink util
+
+test_:
+	$(MAKE) -C ./test/
   
 #######################################
 # dependencies
