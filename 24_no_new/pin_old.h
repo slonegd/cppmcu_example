@@ -2,23 +2,22 @@
 
 #include "defines.h"
 #include "GPIO.h"
-#include "heap.h"
 
 
-class Pin {
+class Pin_old {
    Port& port;  // класс не шаблонный
    const int n;
 public:
    // пришлось написать этот конструктор, поскольку direct-list-initialization
    // недоступен для приватных полей
-   Pin (Port& port, int n) : port{port}, n{n} {}
+   Pin_old (Port& port, int n) : port{port}, n{n} {}
 
    // фабрика принимает в качестве параметра шаблона всё, что нужно для инициализации
    // инициализирует и возвращает уже проиницализированный параметрами шаблона объект
-   template<Periph p, int n, PinMode mode> static auto& make()
+   template<Periph p, int n, PinMode mode> static auto make()
    {
       // создаём объект
-      auto& pin = *new Pin { Port::make<p>(), n };
+      Pin_old pin { Port::make<p>(), n };
       // инициализируем нужными параметрами
       pin.port.init<n,mode>();
       // возвращаем "забыв" о параметрах шаблона

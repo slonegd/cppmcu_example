@@ -4,6 +4,8 @@
 
 #include "defines.h"
 #include "stm32f0xx.h"
+#include "heap.h"
+#include "pin.h"
 
 // необходимо понимать, что в микромире работать с кучей надо особенно аккуратно
 // постоянные выделения/освобождения памяти могут привести к дефрагментации
@@ -16,25 +18,9 @@
 // самый простой способ, выделить память в самом начале в виде массива
 // и выдавать указатель оператору, контролируя переполнение этого массива
 // Способ посложнее, который не рассматриваю пока, прописать кучу в линкере
-template<size_t heap_size>
-class Heap
-{
-   uint8_t memory[heap_size];
-   size_t free_index {0};
-public:
-   void* allocate (size_t size)
-   {
-      void* p = reinterpret_cast<void*>(memory + free_index);
-      free_index += size;
-      // если нам необходимо памяти больше, чем выделено, то тут будет HardFault
-      // что определиться при первой же отладке
-      return (free_index < heap_size) ? p : nullptr;
-   }
-};
+// данный способ реализован в файле heap.h
+// pin в этой части переписал под аллоцирование в куче
 
-// выделяем память под динамические объекты
-constexpr size_t heap_size {256};
-Heap<heap_size> heap {};
 
 // собственный глобальный оператор new, который работает с нашей кучей
 void* operator new (size_t size)
@@ -52,6 +38,8 @@ int main()
    *i = 1;
    // volatile int i{};
    // i = 1;
+   // auto& pc8 = Pin    ::make<Periph::PC, 8, PinMode::Output>();
+   // pc8.set();
 }
 
 
@@ -63,9 +51,6 @@ int main()
 // выполнение на ассемблере программы с собственным оператором
 // => 0x08000126 <main()+2>:	04 20	movs	r0, #4
 //    0x08000128 <main()+4>:	ff f7 ee ff	bl	0x8000108 <operator new(unsigned int)>
-//    0x0800012c <main()+8>:	00 23	movs	r3, #0
-//    0x08000126 <main()+2>:	04 20	movs	r0, #4
-// => 0x08000128 <main()+4>:	ff f7 ee ff	bl	0x8000108 <operator new(unsigned int)>
 //    0x0800012c <main()+8>:	00 23	movs	r3, #0
 //    0x08000108 <operator new(unsigned int)+0>:	05 4b	ldr	r3, [pc, #20]	; (0x8000120 <operator new(unsigned int)+24>)
 //    0x0800010a <operator new(unsigned int)+2>:	1a 00	movs	r2, r3
@@ -90,3 +75,5 @@ int main()
 // => 0x08000132 <main()+14>:	02 60	str	r2, [r0, #0]
 // => 0x08000134 <main()+16>:	18 00	movs	r0, r3
 //    0x08000136 <main()+18>:	10 bd	pop	{r4, pc}
+
+

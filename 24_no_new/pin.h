@@ -2,7 +2,6 @@
 
 #include "defines.h"
 #include "GPIO.h"
-#include "heap.h"
 
 
 class Pin {
@@ -18,7 +17,7 @@ public:
    template<Periph p, int n, PinMode mode> static auto& make()
    {
       // создаём объект
-      auto& pin = *new Pin { Port::make<p>(), n };
+      static Pin pin { Port::make<p>(), n };
       // инициализируем нужными параметрами
       pin.port.init<n,mode>();
       // возвращаем "забыв" о параметрах шаблона
