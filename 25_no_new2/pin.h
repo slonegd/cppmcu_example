@@ -2,9 +2,6 @@
 
 #include "defines.h"
 #include "GPIO.h"
-#if not defined(TEST)
-#include "no_mutex.h"
-#endif
 
 
 class Pin {
